@@ -1,3 +1,5 @@
+import subprocess as s
+from subprocess import Popen
 import networkx as nx
 import os
 import numpy as np
@@ -190,7 +192,8 @@ class Control:
         # 999,999,999 is max node number I could get here, I dont know if its same using c++ but seems not
         n = self.network.graph.GetNodes()
 
-        b_graph = snap.TNEANet.New(
+        # b_graph = snap.TNEANet.New(
+        b_graph = snap.TNEANet.New(  # TUNGraph is undirected
             n * 2,
             self.network.graph.GetEdges(),
         )
@@ -200,8 +203,8 @@ class Control:
 
         print("[Bipartite Representation] START %s" % str(datetime.datetime.now()))
 
-        source_id = b_graph.AddNode(999999999 - 1)
-        sink_id = b_graph.AddNode(999999999)
+        source_id = b_graph.AddNode(constants.max_flow_source_id)
+        sink_id = b_graph.AddNode(constants.max_flow_sink_id)
 
         for node in self.network.graph.Nodes():
             node_id = node.GetId()
@@ -217,12 +220,12 @@ class Control:
         for edge in self.network.graph.Edges():
             # edges are from out_set to in_set
 
-            edge_source_node = edge.GetSrcNId()  # belongs out_set
-            edge_destination_node = n + edge.GetSrcNId()  # belongs in_set
+            bipartite_edge_source_node = edge.GetSrcNId()  # belongs out_set
+            bipartite_edge_destination_node = n + edge.GetDstNId()  # belongs in_set
 
-            b_graph.AddEdge(source_id, edge_destination_node)
-            b_graph.AddEdge(edge_source_node, edge_destination_node)
-            b_graph.AddEdge(edge_destination_node, sink_id)
+            b_graph.AddEdge(source_id, bipartite_edge_source_node)
+            b_graph.AddEdge(bipartite_edge_source_node, bipartite_edge_destination_node)
+            b_graph.AddEdge(bipartite_edge_destination_node, sink_id)
 
         # b_graph.AddIntAttrDatE(ed_id, 1, "capacity") # -> snap.SaveEdgeList not gonna save the edge attribute (capacity)
 
@@ -231,11 +234,66 @@ class Control:
     def snap_find_control_nodes(self):
         out_set, in_set, b_graph = self.snap_di_graph_bipartite_representation()
 
-        path = os.path.abspath(
-            "%s%i.txt" % (constants.path_bipartite_representations, self.network.network_id)
+        path_bipartite_representation = self.get_path_bipartite_representation()
+
+        snap.SaveEdgeList(b_graph, path_bipartite_representation, "Save as tab-separated list of edges")
+
+        path_matching_result = self.get_path_matching()
+
+        path_matching = "%s -i:%s -o:%s -src:%i -snk:%i" % \
+                        (constants.path_bipartite_matching_snap,
+                         path_bipartite_representation,
+                         path_matching_result,
+                         constants.max_flow_source_id,
+                         constants.max_flow_sink_id
+                         )
+
+        print (path_matching)
+
+        ps = Popen(path_matching, stdin=s.PIPE, stdout=s.PIPE)
+        print ('pOpen done..')
+
+        (stdout, stderr) = ps.communicate()
+
+        print (stdout)
+        print (stderr)
+
+        bipartite_network = self.network.experiment.snap_load_network(
+            graph_path=path_matching_result,
+            model=constants.NetworkModel.bipartite_matching(),
+            name='BIPARTITE MATCHING - ' + self.network.name,
+            network_id=0,
+            directed=False
         )
-        snap.SaveEdgeList(b_graph, path, "Save as tab-separated list of edges")
-        pass
+
+        n = self.network.graph.GetNodes()
+        control_nodes = [node - n for node in in_set if bipartite_network.graph.IsNode(node) is False]
+
+        file_cn = open(self.get_path_control_nodes(), 'w')
+        file_cn.write("\n".join(str(x) for x in control_nodes))
+        file_cn.close()
+
+        return {
+            "path_matching": path_matching,
+            "control_nodes": control_nodes,
+            "path_control_nodes": self.get_path_control_nodes()
+        }
+
+    def get_path_control_nodes(self):
+        return os.path.abspath(
+            "%s%i_control_nodes.txt" % (constants.path_bipartite_representations, self.network.network_id)
+        )
+
+    def get_path_matching(self):
+        return os.path.abspath(
+            "%s%i_matching.txt" % (constants.path_bipartite_representations, self.network.network_id)
+        )
+
+    def get_path_bipartite_representation(self):
+
+        return os.path.abspath(
+            "%s%i_bipartite_representation.txt" % (constants.path_bipartite_representations, self.network.network_id)
+        )
 
     @staticmethod
     def percentage_control_forough(matrix, n, driver_nodes):

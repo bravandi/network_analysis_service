@@ -1,7 +1,6 @@
 from complex_networks.heuristic import Heuristic
 import common.event as event
 import random
-# from complex_networks.complex_network import NetworkModel, ComplexNetwork
 import numpy
 import numpy as np
 

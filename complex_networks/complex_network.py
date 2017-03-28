@@ -17,35 +17,6 @@ import constants
 
 # _work_path = os.path.abspath(_work_path) + os.sep
 
-class NetworkModel:
-    @staticmethod
-    def erdos_renyi():
-        return "erdos_renyi"
-
-    @staticmethod
-    def scale_free():
-        return "scale_free"
-
-    @staticmethod
-    def real_network():
-
-        return "real_network"
-
-    @staticmethod
-    def parse(s):
-        s = s.lower()
-
-        if s in ["erdos_renyi", 'er', 'erdos-renyi']:
-            return NetworkModel.erdos_renyi()
-
-        if s in ["scale_free", 'er', 'scale-free']:
-            return NetworkModel.scale_free()
-
-        if s in ["real_network", "rn"]:
-            return NetworkModel.real_network()
-
-        return None
-
 
 class ComplexNetwork:
 
@@ -147,21 +118,6 @@ class ComplexNetwork:
                 not_unique.append((out_node, is_unique))
 
         return not_unique
-
-    def snap_load_network(self, graph_path):
-        snap_directed_graph = snap.LoadEdgeList(
-            snap.PNGraph,
-            os.path.abspath(constants.path_work + graph_path), 0, 1)
-
-        print "G5: Nodes %d, Edges %d" % (snap_directed_graph.GetNodes(), snap_directed_graph.GetEdges())
-
-        self.graph = snap_directed_graph
-
-        # for binary
-        # FIn = snap.TFIn(graph_path)
-        # Graph = snap.TNGraph.Load(FIn)
-        # print(FIn.Len())
-        print snap_directed_graph
 
     def average_degree_network(self, type='total'):
         # todo this is wrong (wrong implimentation of calculateing average degree from degree distrifix it later just use L / N (for directed networks)
@@ -493,9 +449,9 @@ class ComplexNetwork:
             p=0.1,
             remove_loops=True):
 
-        if self.model == NetworkModel.erdos_renyi():
+        if self.model == constants.NetworkModel.erdos_renyi():
             self.graph = nx.fast_gnp_random_graph(n=n, p=p, directed=self.directed)
-        elif self.model == NetworkModel.scale_free():
+        elif self.model == constants.NetworkModel.scale_free():
             self.graph = nx.scale_free_graph(n=n)
         else:
             return "failed"
@@ -522,7 +478,7 @@ class ComplexNetwork:
             network_id=db_id,
             name=name,
             directed=True,
-            model=NetworkModel.real_network(),  # make both frameworks use the same model
+            model=constants.NetworkModel.real_network(),  # make both frameworks use the same model
             p_value=0
         )
 
@@ -591,7 +547,7 @@ class ComplexNetwork:
             network_id=db_id,
             name=name,
             directed=True,
-            model=NetworkModel.real_network()  # make both frameworks use the same model
+            model=constants.NetworkModel.real_network()  # make both frameworks use the same model
         )
 
         return complex_network

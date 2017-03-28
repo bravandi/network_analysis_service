@@ -1,6 +1,8 @@
-from complex_networks.complex_network import NetworkModel, ComplexNetwork
-import random
-import numpy
+from complex_networks.complex_network import ComplexNetwork
+import constants
+import os
+import os.path
+import snap
 
 
 class Experiment:
@@ -18,8 +20,44 @@ class Experiment:
 
         self.erdos_renyi = {}
 
+    def snap_load_network(self, graph_path, name, network_id, directed=True,
+                          model=constants.NetworkModel.real_network()):
+
+        q = ComplexNetwork(
+            experiment=self,
+            model=model,
+            name=name,
+            network_id=network_id,
+            directed=directed
+        )
+
+        path_t = graph_path
+        if os.path.isfile(graph_path) is False:
+            path_t = os.path.abspath(constants.path_work + graph_path)
+
+        if directed is True:
+            snap_directed_graph = snap.LoadEdgeList(
+                snap.PNGraph,
+                path_t, 0, 1)
+        else:
+            snap_directed_graph = snap.LoadEdgeList(
+                snap.PUNGraph, # PNEANet -> load directed network  |  PUNGraph -> load directed graph
+                path_t, 0, 1)
+
+        print ("G5: Nodes %d, Edges %d" % (snap_directed_graph.GetNodes(), snap_directed_graph.GetEdges()))
+
+        q.graph = snap_directed_graph
+
+        # for binary
+        # FIn = snap.TFIn(graph_path)
+        # Graph = snap.TNGraph.Load(FIn)
+        # print(FIn.Len())
+        # print snap_directed_graph
+
+        return q
+
     def generate_network(self, model, n, p, name='', directed=True, remove_loops=True):
-        if NetworkModel.parse(model) is None:
+        if constants.NetworkModel.parse(model) is None:
             return "not defined network model"
 
         c_network = ComplexNetwork(
@@ -43,11 +81,11 @@ if __name__ == "__main__":
     # exp = Experiment()
     # n = 250
     # # p = 0.01
-    # network = exp.generate_network(model=NetworkModel.erdos_renyi(), n=n, p=0.01)
+    # network = exp.generate_network(model=constants.NetworkModel.erdos_renyi(), n=n, p=0.01)
     #
     # print(exp.experiment_heuristic_RENAME(network, distribution_type="in"))
 
-    # network, save_status = exp.generate_network(model=NetworkModel.scale_free(), n=1000, p=0.01, save=False)
+    # network, save_status = exp.generate_network(model=constants.NetworkModel.scale_free(), n=1000, p=0.01, save=False)
 
     # network.degree_distribution()
     # network.quartile()
