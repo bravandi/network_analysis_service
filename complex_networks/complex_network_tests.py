@@ -1,4 +1,4 @@
-from complex_networks.complex_network import ComplexNetwork
+from complex_networks.complex_network import Network
 import complex_networks.tools as tools
 import json
 
@@ -10,7 +10,7 @@ import numpy as np
 
 if __name__ == '__main__':
 
-    complex_net = ComplexNetwork.create_from_text_file(
+    complex_net = Network.create_from_text_file(
         path='D:\\SoftwareProject\\complex_networks_tools\\data\\High-energy physics theory citation network\\Cit-HepTh.txt',
         experiment=None,
         name='High-energy physics theory citation network',

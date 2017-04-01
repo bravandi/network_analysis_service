@@ -18,7 +18,7 @@ import constants
 # _work_path = os.path.abspath(_work_path) + os.sep
 
 
-class ComplexNetwork:
+class Network:
 
     """
 
@@ -157,7 +157,7 @@ class ComplexNetwork:
         return control_nodes
 
     def degree_distribution(self):
-        ComplexNetwork.degree_distribution_calculate(self.graph, draw=True)
+        Network.degree_distribution_calculate(self.graph, draw=True)
         pass
 
     def draw_degree_distribution_quartile(self):
@@ -171,8 +171,8 @@ class ComplexNetwork:
         # test = ComplexNetwork.tiles_degree(self.graph.in_degree(), return_dict=True)
 
         # if is True returns[(quartile, node, degree)] otherwise: {node: (quartile, degree)}
-        in_degree_quartile = init + ComplexNetwork.tiles_degree(self.graph.in_degree())
-        out_degree_quartile = init + ComplexNetwork.tiles_degree(self.graph.out_degree())
+        in_degree_quartile = init + Network.tiles_degree(self.graph.in_degree())
+        out_degree_quartile = init + Network.tiles_degree(self.graph.out_degree())
 
         counter_for_in_degree = Counter(elem[0] for elem in in_degree_quartile)
         counter_for_out_degree = Counter(elem[0] for elem in out_degree_quartile)
@@ -473,7 +473,7 @@ class ComplexNetwork:
 
         g = nx.read_gml(path, label='id')
 
-        complex_network = ComplexNetwork(
+        complex_network = Network(
             experiment=experiment,
             network_id=db_id,
             name=name,
@@ -541,7 +541,7 @@ class ComplexNetwork:
             number_of_edges_added
         ))
 
-        complex_network = ComplexNetwork(
+        complex_network = Network(
             nx_graph=g,
             experiment=experiment,
             network_id=db_id,

@@ -1,4 +1,4 @@
-from complex_networks.complex_network import ComplexNetwork
+from complex_networks.network import Network
 import constants
 import os
 import os.path
@@ -23,7 +23,7 @@ class Experiment:
     def snap_load_network(self, graph_path, name, network_id, directed=True,
                           model=constants.NetworkModel.real_network()):
 
-        q = ComplexNetwork(
+        q = Network(
             experiment=self,
             model=model,
             name=name,
@@ -41,10 +41,11 @@ class Experiment:
                 path_t, 0, 1)
         else:
             snap_directed_graph = snap.LoadEdgeList(
-                snap.PUNGraph, # PNEANet -> load directed network  |  PUNGraph -> load directed graph
+                snap.PUNGraph,  # PNEANet -> load directed network  |  PUNGraph -> load directed graph
                 path_t, 0, 1)
 
-        print ("G5: Nodes %d, Edges %d" % (snap_directed_graph.GetNodes(), snap_directed_graph.GetEdges()))
+        print ("[graph loaded] directed: %s Nodes: %d Edges: %d (directed: PNGraph | undirected: PUNGraph)"
+               % (str(directed), snap_directed_graph.GetNodes(), snap_directed_graph.GetEdges()))
 
         q.graph = snap_directed_graph
 
@@ -60,7 +61,7 @@ class Experiment:
         if constants.NetworkModel.parse(model) is None:
             return "not defined network model"
 
-        c_network = ComplexNetwork(
+        c_network = Network(
             experiment=self,
             network_id=-1,
             name=name,
@@ -77,7 +78,7 @@ class Experiment:
 if __name__ == "__main__":
     path = 'D:\\SoftwareProject\\complex_networks_tools\\data\\Neural Network\\celegansneural.gml'
 
-    net = ComplexNetwork.create_from_gml(path)
+    net = Network.create_from_gml(path)
     # exp = Experiment()
     # n = 250
     # # p = 0.01

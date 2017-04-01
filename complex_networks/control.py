@@ -1,4 +1,5 @@
 import subprocess as s
+import json
 from subprocess import Popen
 import networkx as nx
 import os
@@ -187,24 +188,26 @@ class Control:
 
         return driver_node_list
 
-    def snap_di_graph_bipartite_representation(self):
+    def snap_di_graph_bipartite_representation_reduced_max_flow(self):
 
         # 999,999,999 is max node number I could get here, I dont know if its same using c++ but seems not
         n = self.network.graph.GetNodes()
+        bipartite_max_node_id = self.network.graph.GetMxNId() * 2
 
         # b_graph = snap.TNEANet.New(
         b_graph = snap.TNEANet.New(  # TUNGraph is undirected
-            n * 2,
+            bipartite_max_node_id,
             self.network.graph.GetEdges(),
         )
+
         # I guess no need
         out_set = snap.TIntV()
         in_set = snap.TIntV()
 
         print("[Bipartite Representation] START %s" % str(datetime.datetime.now()))
 
-        source_id = b_graph.AddNode(constants.max_flow_source_id)
-        sink_id = b_graph.AddNode(constants.max_flow_sink_id)
+        source_node = b_graph.AddNode(bipartite_max_node_id + 1)
+        sink_node = b_graph.AddNode(bipartite_max_node_id + 2)
 
         for node in self.network.graph.Nodes():
             node_id = node.GetId()
@@ -223,34 +226,55 @@ class Control:
             bipartite_edge_source_node = edge.GetSrcNId()  # belongs out_set
             bipartite_edge_destination_node = n + edge.GetDstNId()  # belongs in_set
 
-            b_graph.AddEdge(source_id, bipartite_edge_source_node)
-            b_graph.AddEdge(bipartite_edge_source_node, bipartite_edge_destination_node)
-            b_graph.AddEdge(bipartite_edge_destination_node, sink_id)
+            if b_graph.IsEdge(source_node, bipartite_edge_source_node) is False:
+                b_graph.AddEdge(source_node, bipartite_edge_source_node)
+
+            if b_graph.IsEdge(bipartite_edge_source_node, bipartite_edge_destination_node) is False:
+                b_graph.AddEdge(bipartite_edge_source_node, bipartite_edge_destination_node)
+
+            if b_graph.IsEdge(bipartite_edge_destination_node, sink_node) is False:
+                b_graph.AddEdge(bipartite_edge_destination_node, sink_node)
 
         # b_graph.AddIntAttrDatE(ed_id, 1, "capacity") # -> snap.SaveEdgeList not gonna save the edge attribute (capacity)
 
-        return out_set, in_set, b_graph
+        return out_set, in_set, b_graph, source_node, sink_node
 
     def snap_find_control_nodes(self):
-        out_set, in_set, b_graph = self.snap_di_graph_bipartite_representation()
+        # identify critical control nodes
+        with open(self.get_path_critical_control_nodes(), 'w') as writefile:
+            json.dump([n.GetId() for n in self.network.graph.Nodes() if n.GetInDeg() == 0], writefile)
 
-        path_bipartite_representation = self.get_path_bipartite_representation()
+        out_set, in_set, b_graph, source_node, sink_node = \
+            self.snap_di_graph_bipartite_representation_reduced_max_flow()
 
-        snap.SaveEdgeList(b_graph, path_bipartite_representation, "Save as tab-separated list of edges")
+        path_bipartite_representation_reduced_max_flow = \
+            self.get_path_bipartite_representation_reduced_max_flow_graph()
 
-        path_matching_result = self.get_path_matching()
+        snap.SaveEdgeList(b_graph, path_bipartite_representation_reduced_max_flow,
+                          "Save as tab-separated list of edges")
 
-        path_matching = "%s -i:%s -o:%s -src:%i -snk:%i" % \
-                        (constants.path_bipartite_matching_snap,
-                         path_bipartite_representation,
-                         path_matching_result,
-                         constants.max_flow_source_id,
-                         constants.max_flow_sink_id
-                         )
+        # ;;;;;;;;;;;;;;;;;;;;;;;; save bipartite representation ;;;;;;;;;;;;;;;;;;;;
+        b_graph.DelNode(source_node)
+        b_graph.DelNode(sink_node)
 
-        print (path_matching)
+        snap.SaveEdgeList(b_graph, self.get_path_bipartite_representation_graph(),
+                          "Save as tab-separated list of edges")
+        # ;;;;;;;;;;;;;;;;;;;;;;;; save bipartite representation ;;;;;;;;;;;;;;;;;;;;
 
-        ps = Popen(path_matching, stdin=s.PIPE, stdout=s.PIPE)
+        path_maximum_matching = self.get_path_maximum_matching_graph()
+
+        path_of_matching_calculator_application = "%s -i:%s -o:%s -src:%i -snk:%i" % \
+                                                  (
+                                                      constants.path_bipartite_matching_app_snap,
+                                                      path_bipartite_representation_reduced_max_flow,  # input file
+                                                      path_maximum_matching,  # output file
+                                                      source_node,
+                                                      sink_node
+                                                  )
+
+        print (path_of_matching_calculator_application)
+
+        ps = Popen(path_of_matching_calculator_application, stdin=s.PIPE, stdout=s.PIPE)
         print ('pOpen done..')
 
         (stdout, stderr) = ps.communicate()
@@ -258,8 +282,8 @@ class Control:
         print (stdout)
         print (stderr)
 
-        bipartite_network = self.network.experiment.snap_load_network(
-            graph_path=path_matching_result,
+        maximum_matching_graph = self.network.experiment.snap_load_network(
+            graph_path=path_maximum_matching,
             model=constants.NetworkModel.bipartite_matching(),
             name='BIPARTITE MATCHING - ' + self.network.name,
             network_id=0,
@@ -267,32 +291,242 @@ class Control:
         )
 
         n = self.network.graph.GetNodes()
-        control_nodes = [node - n for node in in_set if bipartite_network.graph.IsNode(node) is False]
 
-        file_cn = open(self.get_path_control_nodes(), 'w')
-        file_cn.write("\n".join(str(x) for x in control_nodes))
-        file_cn.close()
+        control_unmatched_nodes_inset = []
+        matched_nodes_inset = []
+
+        for node in in_set:
+            if maximum_matching_graph.graph.IsNode(node):
+                matched_nodes_inset.append((node, node - n))
+            else:
+                control_unmatched_nodes_inset.append((node, node - n))
+
+        with open(self.get_path_control_unmatched_nodes_inset(), 'w') as outfile:
+            json.dump(control_unmatched_nodes_inset, outfile)
+
+        with open(self.get_path_matched_nodes_inset(), 'w') as outfile:
+            json.dump(matched_nodes_inset, outfile)
 
         return {
-            "path_matching": path_matching,
-            "control_nodes": control_nodes,
-            "path_control_nodes": self.get_path_control_nodes()
+            "control_nodes": control_unmatched_nodes_inset
         }
 
-    def get_path_control_nodes(self):
-        return os.path.abspath(
-            "%s%i_control_nodes.txt" % (constants.path_bipartite_representations, self.network.network_id)
+    # todo impliment caching
+    def snap_load_maximum_matching_cnetwork(self):
+        return self.network.experiment.snap_load_network(
+            graph_path=self.get_path_maximum_matching_graph(),
+            model=constants.NetworkModel.bipartite_matching(),
+            name='MAXIMUM MATCHING - ' + self.network.name,
+            network_id=self.network.network_id,
+            directed=False
         )
 
-    def get_path_matching(self):
+    # todo impliment caching
+    def snap_load_bipartite_representation_cnetwork(self):
+        return self.network.experiment.snap_load_network(
+            graph_path=self.get_path_bipartite_representation_graph(),
+            model=constants.NetworkModel.bipartite_matching(),
+            name='BIPARTITE REPRESENTATION - ' + self.network.name,
+            network_id=self.network.network_id,
+            directed=False
+        )
+
+
+    def snap_is_path_to_unmatched_node_exists(
+            self,
+            source_node,
+            graph,
+            maximum_matching_tungraph,
+            unmatched_nodes
+    ):
+
+        bfs_tree = snap.PUNGraph.New()
+        bfs_tree.AddNode(source_node)
+
+        # used TIntV (vector) as queue
+        queue = snap.TIntV()
+        queue.Add(source_node)
+        look_for_unmatched_link = True
+
+        while not queue.Empty():
+
+            u = queue[0]
+            queue.Del(0)
+
+            for v in graph.GetNI(u).GetOutEdges():
+
+                if bfs_tree.IsNode(v) is False:
+                    if look_for_unmatched_link is True:
+                        if maximum_matching_tungraph.IsEdge(u, v):
+                            # if current link is matched, look for the next link
+                            continue
+
+                    if look_for_unmatched_link is False:  # look for matched link
+                        if maximum_matching_tungraph.IsEdge(u, v) is False:
+                            # id current link is not matched, look for a matched link
+                            continue
+
+                    # probably dont need "look_for_unmatched_link is True" but just as an insurance
+                    if look_for_unmatched_link is True and v in unmatched_nodes:
+                        return True
+
+                    bfs_tree.AddNode(v)
+                    bfs_tree.AddEdge(u, v)
+
+                    queue.Add(v)
+
+                    look_for_unmatched_link = not look_for_unmatched_link
+
+        # snap.GetShortPath_PUNGraph(bfs_tree, 1, 10)
+
+        # print ([(e.GetSrcNId(), e.GetDstNId()) for e in bfs_tree.Edges()])
+        return False
+
+        # return bfs_tree
+
+    def snap_find_redundant_control_nodes(self):
+        bipartite_representation_tungraph = self.snap_load_bipartite_representation_cnetwork().graph
+
+        # contains matched links
+        maximum_matching_tungraph = self.snap_load_maximum_matching_cnetwork().graph
+        # matched_links = [n.GetId() for n in maximum_matching_cnetwork.graph.Nodes()]
+
+        unmatched_nodes, matched_nodes_inset = self.load_inset_matched_and_control_nodes()
+
+        critical_nodes, intermittent_nodes, redundant_nodes = self.load_critical_redundant_intermittent_control_nodes()
+
+        redundant_nodes = []  # snap.TIntV()
+        # critical_nodes = snap.TIntV()
+        intermittent_nodes = list(set([u[1] for u in unmatched_nodes]) - critical_nodes)  # snap.TIntV()
+
+        for matched_node in matched_nodes_inset:
+            matched_node_id = matched_node[0]  # [0] is the inset assigned id, [1] original graph node id
+            j = maximum_matching_tungraph.GetNI(matched_node[0]).GetNbrNId(0)
+
+            # i (matched_node_id) neighbors ID ies
+            matched_node_neighbors = list(bipartite_representation_tungraph.GetNI(matched_node_id).GetOutEdges())
+
+            bipartite_representation_tungraph.DelNode(matched_node_id)
+
+            is_path_to_unmatched_node_exists = self.snap_is_path_to_unmatched_node_exists(
+                source_node=j,
+                graph=bipartite_representation_tungraph,
+                maximum_matching_tungraph=maximum_matching_tungraph,
+                unmatched_nodes=[u[0] for u in unmatched_nodes]
+
+                # matched_edges=[(e.GetSrcNId(), e.GetDstNId()) for e in maximum_matching_tungraph.Edges()]
+            )
+
+            if is_path_to_unmatched_node_exists:
+                intermittent_nodes.append(matched_node[1])
+            else:
+                redundant_nodes.append(matched_node[1])
+
+            # ;;;;;;;;;;;;;;;;; re-add the deleted node and its edges ;;;;;;;;;;;;
+            bipartite_representation_tungraph.AddNode(matched_node_id)
+
+            for matched_node_neighbor in matched_node_neighbors:
+                bipartite_representation_tungraph.AddEdge(matched_node_neighbor, matched_node_id)
+                # ;;;;;;;;;;;;;;;;; re-add the deleted node and its edges ;;;;;;;;;;;;
+
+        print ("redundant_nodes: %s intermittent_nodes: %s critical_nodes: %s" % (
+            str(list(redundant_nodes)),
+            str(list(intermittent_nodes)),
+            str(list(critical_nodes))
+        ))
+
+        with open(self.get_path_intermittent_control_nodes(), 'w') as writefile:
+            json.dump(intermittent_nodes, writefile)
+
+        with open(self.get_path_redundant_control_nodes(), 'w') as writefile:
+            json.dump(redundant_nodes, writefile)
+
+    def load_inset_matched_and_control_nodes(self):
+        # control nodes are unmatched nodes in the inset
+
+        with open(self.get_path_control_unmatched_nodes_inset(), 'r') as infile:
+            control_nodes = json.load(infile)
+
+        with open(self.get_path_matched_nodes_inset(), 'r') as infile:
+            matched_nodes_inset = json.load(infile)
+
+        return control_nodes, matched_nodes_inset
+
+    def load_critical_redundant_intermittent_control_nodes(self):
+        # control nodes are unmatched nodes in the inset
+        critical_nodes = None
+        intermittent_nodes = None
+        redundant_nodes = None
+
+        if os.path.isfile(self.get_path_critical_control_nodes()):
+            try:
+                with open(self.get_path_critical_control_nodes(), 'r') as infile:
+                    critical_nodes = set(json.load(infile))
+            except ValueError:
+                critical_nodes = set()
+
+        if os.path.isfile(self.get_path_intermittent_control_nodes()):
+            try:
+                with open(self.get_path_intermittent_control_nodes(), 'r') as infile:
+                    intermittent_nodes = set(json.load(infile))
+            except ValueError:
+                intermittent_nodes = set()
+
+        if os.path.isfile(self.get_path_redundant_control_nodes()):
+            try:
+                with open(self.get_path_redundant_control_nodes(), 'r') as infile:
+                    redundant_nodes = set(json.load(infile))
+            except ValueError:
+                redundant_nodes = set()
+
+        return critical_nodes, intermittent_nodes, redundant_nodes
+
+    def get_path_critical_control_nodes(self):
+        return os.path.abspath(
+            "%s%i_critical_control_nodes.txt" % (
+                constants.path_bipartite_representations, self.network.network_id)
+        )
+
+    def get_path_redundant_control_nodes(self):
+        return os.path.abspath(
+            "%s%i_redundant_never_control_nodes.txt" % (
+                constants.path_bipartite_representations, self.network.network_id)
+        )
+
+    def get_path_intermittent_control_nodes(self):
+        return os.path.abspath(
+            "%s%i_intermittent_control_nodes.txt" % (
+                constants.path_bipartite_representations, self.network.network_id)
+        )
+
+    def get_path_control_unmatched_nodes_inset(self):
+        return os.path.abspath(
+            "%s%i_control_inset_unmatched_nodes.txt" % (
+                constants.path_bipartite_representations, self.network.network_id)
+        )
+
+    def get_path_matched_nodes_inset(self):
+        return os.path.abspath(
+            "%s%i_matched_nodes_inset.txt" % (constants.path_bipartite_representations, self.network.network_id)
+        )
+
+    def get_path_maximum_matching_graph(self):
         return os.path.abspath(
             "%s%i_matching.txt" % (constants.path_bipartite_representations, self.network.network_id)
         )
 
-    def get_path_bipartite_representation(self):
+    def get_path_bipartite_representation_reduced_max_flow_graph(self):
 
         return os.path.abspath(
-            "%s%i_bipartite_representation.txt" % (constants.path_bipartite_representations, self.network.network_id)
+            "%s%i_bipartite_representation_reduced_max_flow.txt" % (
+                constants.path_bipartite_representations, self.network.network_id)
+        )
+
+    def get_path_bipartite_representation_graph(self):
+
+        return os.path.abspath(
+            "%s%i_bipartite_representation.txt" % (
+                constants.path_bipartite_representations, self.network.network_id)
         )
 
     @staticmethod
