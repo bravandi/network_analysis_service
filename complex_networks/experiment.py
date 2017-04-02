@@ -3,10 +3,11 @@ import constants
 import os
 import os.path
 import snap
+import networkx as nx
 
 
 class Experiment:
-    def __init__(self, db_experiment_id=None):
+    def __init__(self, db_experiment_id=None, debug=False):
         """
 
         :param db_experiment_id: not used yet maybe in future
@@ -20,8 +21,42 @@ class Experiment:
 
         self.erdos_renyi = {}
 
+        self.debug = debug
+
+    def networkx_to_snap_cnetwork(self, networkx, name, network_id, model=constants.NetworkModel.real_network()):
+
+        is_directed = False
+        if isinstance(networkx, nx.DiGraph):
+            is_directed = True
+
+        q = Network(
+            experiment=self,
+            model=model,
+            name=name,
+            network_id=network_id,
+            directed=is_directed
+        )
+
+        if is_directed is True:
+            # snap_graph = snap.PNGraph.New(len(networkx.nodes()), len(networkx.edges()))
+            snap_graph = snap.PNGraph.New()
+        else:
+            # snap_graph = snap.PUNGraph.New(len(networkx.nodes()), len(networkx.edges()))
+            snap_graph = snap.PUNGraph.New()
+
+        q.graph = snap_graph
+
+        for node in networkx.nodes():
+            snap_graph.AddNode(node)
+
+        for edge in networkx.edges():
+            snap_graph.AddEdge(edge[0], edge[1])
+            pass
+
+        return q
+
     def snap_load_network(self, graph_path, name, network_id, directed=True,
-                          model=constants.NetworkModel.real_network()):
+                          model=constants.NetworkModel.real_network(), initialize_graph=True):
 
         q = Network(
             experiment=self,
@@ -35,19 +70,26 @@ class Experiment:
         if os.path.isfile(graph_path) is False:
             path_t = os.path.abspath(constants.path_work + graph_path)
 
-        if directed is True:
-            snap_directed_graph = snap.LoadEdgeList(
-                snap.PNGraph,
-                path_t, 0, 1)
+        if initialize_graph:
+            if directed is True:
+                snap_graph = snap.LoadEdgeList(
+                    snap.PNGraph,
+                    path_t, 0, 1)
+            else:
+                snap_graph = snap.LoadEdgeList(
+                    snap.PUNGraph,  # PNEANet -> load directed network  |  PUNGraph -> load directed graph
+                    path_t, 0, 1)
         else:
-            snap_directed_graph = snap.LoadEdgeList(
-                snap.PUNGraph,  # PNEANet -> load directed network  |  PUNGraph -> load directed graph
-                path_t, 0, 1)
+            if directed is True:
+                snap_graph = snap.PNGraph.New()
+            else:
+                snap_graph = snap.PUNGraph.New()
 
-        print ("[graph loaded] directed: %s Nodes: %d Edges: %d (directed: PNGraph | undirected: PUNGraph)"
-               % (str(directed), snap_directed_graph.GetNodes(), snap_directed_graph.GetEdges()))
+        if self.debug:
+            print ("[graph loaded] directed: %s Nodes: %d Edges: %d (directed: PNGraph | undirected: PUNGraph)"
+                   % (str(directed), snap_graph.GetNodes(), snap_graph.GetEdges()))
 
-        q.graph = snap_directed_graph
+        q.graph = snap_graph
 
         # for binary
         # FIn = snap.TFIn(graph_path)

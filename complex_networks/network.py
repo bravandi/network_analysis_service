@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import pandas.core.algorithms as algos
 import complex_networks.control as C
+import networkx_gml
 import snap
 import random
 # from .control import Control
@@ -469,20 +470,19 @@ class Network:
         return "successful"
 
     @staticmethod
-    def create_from_gml(path, experiment=None, db_id=None, name=""):
+    def networkx_create_from_gml(path, experiment=None, db_id=None, name=""):
 
-        g = nx.read_gml(path, label='id')
+        return networkx_gml.read_gml(path, label='id')
 
-        complex_network = Network(
-            experiment=experiment,
-            network_id=db_id,
-            name=name,
-            directed=True,
-            model=constants.NetworkModel.real_network(),  # make both frameworks use the same model
-            p_value=0
-        )
+        # complex_network = Network(
+        #     experiment=experiment,
+        #     network_id=db_id,
+        #     name=name,
+        #     directed=True,
+        #     model=constants.NetworkModel.real_network()  # make both frameworks use the same model
+        # )
 
-        complex_network.graph = g
+        # complex_network.graph = g
 
         # g.node[0] --> {'label': '1'}
         # nx.get_node_attributes(g, 'label')
@@ -490,7 +490,7 @@ class Network:
         # g[111][86]     --> {'value': 7}
         # g.adj[111][86] --> {'value': 7}
 
-        return complex_network
+        # return complex_network
 
     @staticmethod
     def create_from_text_file(

@@ -12,7 +12,7 @@ import complex_networks as CN
 import constants
 from collections import Counter
 import itertools as it
-import datetime
+from datetime import datetime
 import snap
 
 
@@ -204,8 +204,6 @@ class Control:
         out_set = snap.TIntV()
         in_set = snap.TIntV()
 
-        print("[Bipartite Representation] START %s" % str(datetime.datetime.now()))
-
         source_node = b_graph.AddNode(bipartite_max_node_id + 1)
         sink_node = b_graph.AddNode(bipartite_max_node_id + 2)
 
@@ -239,7 +237,7 @@ class Control:
 
         return out_set, in_set, b_graph, source_node, sink_node
 
-    def snap_find_control_nodes(self):
+    def snap_find_mds_minimum_driver_node_set(self):
         # identify critical control nodes
         with open(self.get_path_critical_control_nodes(), 'w') as writefile:
             json.dump([n.GetId() for n in self.network.graph.Nodes() if n.GetInDeg() == 0], writefile)
@@ -272,15 +270,16 @@ class Control:
                                                       sink_node
                                                   )
 
-        print (path_of_matching_calculator_application)
+        if self.network.experiment.debug:
+            print ("\n[executing started %s] %s" % (str(datetime.now()), path_of_matching_calculator_application))
 
         ps = Popen(path_of_matching_calculator_application, stdin=s.PIPE, stdout=s.PIPE)
-        print ('pOpen done..')
 
         (stdout, stderr) = ps.communicate()
 
-        print (stdout)
-        print (stderr)
+        # print ("[stdout] --> %s \n [stderr] --> %s" % (stdout, stderr))
+        if self.network.experiment.debug:
+            print ("[execution done] %s\n" % str(datetime.now()))
 
         maximum_matching_graph = self.network.experiment.snap_load_network(
             graph_path=path_maximum_matching,
@@ -292,24 +291,33 @@ class Control:
 
         n = self.network.graph.GetNodes()
 
-        control_unmatched_nodes_inset = []
+        # unmatched nodes are the control nodes
+        # Both below will contain tuple (id in bipartite, id in given graph)
+        unmatched_nodes_inset = []
+        mds = []
         matched_nodes_inset = []
 
         for node in in_set:
             if maximum_matching_graph.graph.IsNode(node):
                 matched_nodes_inset.append((node, node - n))
             else:
-                control_unmatched_nodes_inset.append((node, node - n))
+                node_id = node - n
+                unmatched_nodes_inset.append((node, node - n))
+                mds.append(node_id)
 
         with open(self.get_path_control_unmatched_nodes_inset(), 'w') as outfile:
-            json.dump(control_unmatched_nodes_inset, outfile)
+            json.dump(unmatched_nodes_inset, outfile)
 
         with open(self.get_path_matched_nodes_inset(), 'w') as outfile:
             json.dump(matched_nodes_inset, outfile)
 
-        return {
-            "control_nodes": control_unmatched_nodes_inset
-        }
+        if self.network.experiment.debug:
+            print (
+                "\n[# number of control nodes] %d | %s\n     tuples are --> (id in the bipartite representation, id in the given graph)\n" % (
+                    len(unmatched_nodes_inset),
+                    str(unmatched_nodes_inset) if len(unmatched_nodes_inset) < 100 else "too big"))
+
+        return unmatched_nodes_inset, mds
 
     # todo impliment caching
     def snap_load_maximum_matching_cnetwork(self):
@@ -331,7 +339,6 @@ class Control:
             directed=False
         )
 
-
     def snap_is_path_to_unmatched_node_exists(
             self,
             source_node,
@@ -340,6 +347,7 @@ class Control:
             unmatched_nodes
     ):
 
+        # todo instead of bfs tree maintain a vector, no need to waste process power on this
         bfs_tree = snap.PUNGraph.New()
         bfs_tree.AddNode(source_node)
 
@@ -371,7 +379,7 @@ class Control:
                         return True
 
                     bfs_tree.AddNode(v)
-                    bfs_tree.AddEdge(u, v)
+                    # bfs_tree.AddEdge(u, v)
 
                     queue.Add(v)
 
@@ -384,7 +392,7 @@ class Control:
 
         # return bfs_tree
 
-    def snap_find_redundant_control_nodes(self):
+    def snap_find_redundant_intermittent_critical_nodes(self):
         bipartite_representation_tungraph = self.snap_load_bipartite_representation_cnetwork().graph
 
         # contains matched links
@@ -429,17 +437,33 @@ class Control:
                 bipartite_representation_tungraph.AddEdge(matched_node_neighbor, matched_node_id)
                 # ;;;;;;;;;;;;;;;;; re-add the deleted node and its edges ;;;;;;;;;;;;
 
-        print ("redundant_nodes: %s intermittent_nodes: %s critical_nodes: %s" % (
-            str(list(redundant_nodes)),
-            str(list(intermittent_nodes)),
-            str(list(critical_nodes))
-        ))
+        if self.network.experiment.debug:
+            print (
+                "\n[# number of Redundant nodes] %d | %s" % (
+                    len(redundant_nodes),
+                    str(redundant_nodes) if len(redundant_nodes) < 100 else "too big"))
+            print (
+                "[# number of Intermittent nodes] %d | %s" % (
+                    len(intermittent_nodes),
+                    str(intermittent_nodes) if len(intermittent_nodes) < 100 else "too big"))
+            print (
+                "[# number of Critical nodes] %d | %s" % (
+                    len(critical_nodes),
+                    str(critical_nodes) if len(critical_nodes) < 100 else "too big"))
+
+        # print ("redundant_nodes: %s intermittent_nodes: %s critical_nodes: %s" % (
+        #     str(list(redundant_nodes)),
+        #     str(list(intermittent_nodes)),
+        #     str(list(critical_nodes))
+        # ))
 
         with open(self.get_path_intermittent_control_nodes(), 'w') as writefile:
             json.dump(intermittent_nodes, writefile)
 
         with open(self.get_path_redundant_control_nodes(), 'w') as writefile:
             json.dump(redundant_nodes, writefile)
+
+        return redundant_nodes, intermittent_nodes, critical_nodes
 
     def load_inset_matched_and_control_nodes(self):
         # control nodes are unmatched nodes in the inset

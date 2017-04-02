@@ -22,6 +22,11 @@ class NetworkModel:
         return "real_network"
 
     @staticmethod
+    def netlogo():
+
+        return "netlogo"
+
+    @staticmethod
     def bipartite_matching():
 
         return "bipartite_matching"
@@ -29,6 +34,9 @@ class NetworkModel:
     @staticmethod
     def parse(s):
         s = s.lower()
+
+        if s in ['netlogo']:
+            return NetworkModel.netlogo()
 
         if s in ['bipartite_matching']:
             return NetworkModel.bipartite_matching()
