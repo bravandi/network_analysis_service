@@ -637,7 +637,8 @@ def generate_gml(G, stringizer=None):
                         raise NetworkXError(
                             '%r cannot be converted into a string' % (value,))
                 if not isinstance(value, (str, unicode)):
-                    raise NetworkXError('%r is not a string' % (value,))
+                    value = str(value)
+                    # raise NetworkXError('%r is not a string' % (value,))
                 yield indent + key + ' "' + escape(value) + '"'
 
     multigraph = G.is_multigraph()

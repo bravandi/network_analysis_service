@@ -2,6 +2,29 @@ import pdb
 from datetime import datetime
 import os
 import subprocess
+import networkx as nx
+import snap
+import constants
+
+
+def relative_path(path):
+    if os.path.isfile(path):
+        return path
+
+    return os.path.abspath(constants.path_work + path)
+
+
+def networkx_draw(G, path):
+    pos = nx.nx_pydot.graphviz_layout(G)
+
+    nx.nx_pydot.write_dot(G, path + '.dot')
+
+    # run_command("dot -Tpng %s > %s" % (path + '.dot', path))
+    run_command("dot -Tpng %s -o %s" % (path + '.dot', path), no_pipe=True)
+
+
+def snap_draw(G, path, name="graph 1"):
+    snap.DrawGViz(G, snap.gvlDot, path, name, True)
 
 
 def convert_string_datetime(input):

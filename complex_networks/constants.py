@@ -1,8 +1,11 @@
 path_work = 'D:/SoftwareProject/network_analysis_service/'
 path_bipartite_representations = path_work + 'temp/work/bipartite_representations/'
-path_bipartite_matching_app_snap = path_work + 'temp/work/snap_bipartite_matching_flows.exe'
-max_flow_sink_id = 63472995 #63,472,995
+# path_bipartite_matching_app_snap = path_work + 'temp/work/snap_bipartite_matching_flows.exe'
+path_bipartite_matching_app_snap = path_work + 'temp/work/snap_bipartite_matching_flows_edmond_karp.exe'
+max_flow_sink_id = 63472995  # 63,472,995
 max_flow_source_id = max_flow_sink_id - 1
+
+
 # 999999999  SNAP push relabel algorithm rejects this number as a node id
 # 99999999
 

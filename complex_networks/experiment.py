@@ -4,10 +4,10 @@ import os
 import os.path
 import snap
 import networkx as nx
-
+import tools as tools
 
 class Experiment:
-    def __init__(self, db_experiment_id=None, debug=False):
+    def __init__(self, db_experiment_id=None, debug=False, draw_graphs=False):
         """
 
         :param db_experiment_id: not used yet maybe in future
@@ -22,6 +22,7 @@ class Experiment:
         self.erdos_renyi = {}
 
         self.debug = debug
+        self.draw_graphs = draw_graphs
 
     def networkx_to_snap_cnetwork(self, networkx, name, network_id, model=constants.NetworkModel.real_network()):
 
@@ -55,6 +56,35 @@ class Experiment:
 
         return q
 
+    def snap_to_networkx_cnetwork(self, snap_g, name, network_id, model=constants.NetworkModel.real_network()):
+
+        is_directed = False
+        if isinstance(snap_g, snap.PNGraph):
+            is_directed = True
+
+        q = Network(
+            experiment=self,
+            model=model,
+            name=name,
+            network_id=network_id,
+            directed=is_directed
+        )
+
+        if is_directed is True:
+            # snap_graph = snap.PNGraph.New(len(networkx.nodes()), len(networkx.edges()))
+            networkx_g = nx.DiGraph()
+        else:
+            # snap_graph = snap.PUNGraph.New(len(networkx.nodes()), len(networkx.edges()))
+            networkx_g = nx.Graph()
+
+        q.graph = networkx_g
+
+        networkx_g.add_nodes_from([n.GetId() for n in snap_g.Nodes()])
+
+        networkx_g.add_edges_from([(e.GetSrcNId(), e.GetDstNId()) for e in snap_g.Edges()])
+
+        return q
+
     def snap_load_network(self, graph_path, name, network_id, directed=True,
                           model=constants.NetworkModel.real_network(), initialize_graph=True):
 
@@ -79,6 +109,14 @@ class Experiment:
                 snap_graph = snap.LoadEdgeList(
                     snap.PUNGraph,  # PNEANet -> load directed network  |  PUNGraph -> load directed graph
                     path_t, 0, 1)
+
+            if self.draw_graphs:
+                tmp = graph_path.replace('\\', '/')
+                path_parts = tmp.split('/')
+                tools.snap_draw(
+                    snap_graph,
+                    tools.relative_path("/temp/work/draw/%s.png" % path_parts[len(path_parts) - 1]),
+                    path_parts[len(path_parts) - 1])
         else:
             if directed is True:
                 snap_graph = snap.PNGraph.New()
@@ -96,6 +134,8 @@ class Experiment:
         # Graph = snap.TNGraph.Load(FIn)
         # print(FIn.Len())
         # print snap_directed_graph
+
+
 
         return q
 

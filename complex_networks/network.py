@@ -13,6 +13,8 @@ import random
 # from .control import Control
 import operator
 import constants
+
+
 # os.path.dirname(os.path.abspath(__file__)) # --> 'D:\\SoftwareProject\\network_analysis_service\\complex_networks'
 
 
@@ -20,7 +22,6 @@ import constants
 
 
 class Network:
-
     """
 
     """
@@ -359,26 +360,26 @@ class Network:
             return list(tiles_node_degree)
 
     @staticmethod
-    def degree_distribution_calculate(graph, draw=False):
+    def degree_distribution_calculate(nx_graph, draw=False):
         title = ""
 
         width = 0.3
 
         fig, ax = plt.subplots()
 
-        degree_sequence = sorted([d for n, d in graph.in_degree().items()], reverse=True)  # degree sequence
+        degree_sequence = sorted([d for n, d in nx_graph.in_degree().items()], reverse=True)  # degree sequence
         degree_count = collections.Counter(degree_sequence)
         in_deg, cnt = zip(*degree_count.items())
         in_deg = np.array(in_deg)
         rects1 = ax.bar(in_deg, cnt, width=width, color='b')
 
-        degree_sequence = sorted([d for n, d in graph.out_degree().items()], reverse=True)  # degree sequence
+        degree_sequence = sorted([d for n, d in nx_graph.out_degree().items()], reverse=True)  # degree sequence
         degree_count = collections.Counter(degree_sequence)
         out_deg, cnt = zip(*degree_count.items())
         out_deg = np.array(out_deg)
         rects2 = ax.bar(out_deg + width, cnt, width=width, color='r')
 
-        degree_sequence = sorted([d for n, d in graph.degree().items()], reverse=True)  # degree sequence
+        degree_sequence = sorted([d for n, d in nx_graph.degree().items()], reverse=True)  # degree sequence
         degree_count = collections.Counter(degree_sequence)
         total_deg, cnt = zip(*degree_count.items())
         total_deg = np.array(total_deg)
@@ -491,6 +492,97 @@ class Network:
         # g.adj[111][86] --> {'value': 7}
 
         # return complex_network
+
+    def snap_degree_distribution(self):
+        directed = False
+
+        out_degree = None
+        in_degree = None
+
+        def init():
+            dic = dict()
+            for i in range(0, 1000):
+                dic[i] = 0
+            return dic
+
+        if isinstance(self.graph, snap.PNGraph):
+            directed = True
+            out_degree = init()
+            in_degree = init()
+
+        total_degree = init()
+
+        for node in self.graph.Nodes():
+            total_degree[node.GetDeg()] += 1
+
+            if directed:
+                in_degree[node.GetInDeg()] += 1
+                out_degree[node.GetOutDeg()] += 1
+
+            pass
+
+        def remove_keys(dic):
+            if dic is None:
+                return None
+            for i in list(reversed(range(0, len(dic)))):
+                if dic[i] == 0:
+                    del dic[i]
+                else:
+                    break
+
+            return dic
+
+        return remove_keys(in_degree), remove_keys(out_degree), remove_keys(total_degree)
+
+    @staticmethod
+    def nx_degree_distribution(nx_graph):
+        directed = False
+
+        out_degree = None
+        in_degree = None
+
+        def init():
+            dic = dict()
+            for i in range(0, 1000):
+                dic[i] = 0
+            return dic
+
+        if isinstance(nx_graph, nx.DiGraph):
+            directed = True
+            out_degree = init()
+            in_degree = init()
+
+        total_degree = init()
+
+        for deg in nx_graph.degree().values():
+            total_degree[deg] += 1
+
+        if directed:
+            for in_deg in nx_graph.in_degree().values():
+                in_degree[in_deg] += 1
+            for out_deg in nx_graph.out_degree().values():
+                out_degree[out_deg] += 1
+
+        def remove_keys(dic):
+            if dic is None:
+                return None
+            for i in list(reversed(range(0, len(dic)))):
+                if dic[i] == 0:
+                    del dic[i]
+                else:
+                    break
+
+            return dic
+
+        return remove_keys(in_degree), remove_keys(out_degree), remove_keys(total_degree)
+
+    @staticmethod
+    def nx_reverse_links(nx_graph):
+
+        for edge in nx_graph.edges():
+            nx_graph.remove_edge(edge[0], edge[1])
+
+            nx_graph.add_edge(edge[1], edge[0])
 
     @staticmethod
     def create_from_text_file(

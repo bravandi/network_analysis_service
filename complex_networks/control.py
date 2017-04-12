@@ -14,6 +14,7 @@ from collections import Counter
 import itertools as it
 from datetime import datetime
 import snap
+import tools as tools
 
 
 class Control:
@@ -250,7 +251,11 @@ class Control:
 
         snap.SaveEdgeList(b_graph, path_bipartite_representation_reduced_max_flow,
                           "Save as tab-separated list of edges")
-
+        if self.network.experiment.draw_graphs:
+            tools.snap_draw(
+                b_graph,
+                tools.relative_path("/temp/work/draw/b_graph_maxflow.png"),
+                "max flow")
         # ;;;;;;;;;;;;;;;;;;;;;;;; save bipartite representation ;;;;;;;;;;;;;;;;;;;;
         b_graph.DelNode(source_node)
         b_graph.DelNode(sink_node)
@@ -289,6 +294,12 @@ class Control:
             directed=False
         )
 
+        # if self.network.experiment.debug:
+        #     tools.snap_draw(
+        #         maximum_matching_graph.graph,
+        #         tools.relative_path("/temp/work/draw/maximum_matching_graph.png"),
+        #         "maximum_matching_graph")
+
         n = self.network.graph.GetNodes()
 
         # unmatched nodes are the control nodes
@@ -313,8 +324,8 @@ class Control:
 
         if self.network.experiment.debug:
             print (
-                "\n[# number of control nodes] %d | %s\n     tuples are --> (id in the bipartite representation, id in the given graph)\n" % (
-                    len(unmatched_nodes_inset),
+                "\n[# number of control nodes] %f | %s\n     tuples are --> (id in the bipartite representation, id in the given graph)\n" % (
+                    round(len(unmatched_nodes_inset) / float(n), 3),
                     str(unmatched_nodes_inset) if len(unmatched_nodes_inset) < 100 else "too big"))
 
         return unmatched_nodes_inset, mds
@@ -344,12 +355,31 @@ class Control:
             source_node,
             graph,
             maximum_matching_tungraph,
-            unmatched_nodes
+            unmatched_nodes,
+            create_bfs_tree=False,
+            return_path_to_unmatched_node=False
     ):
+        """
+
+        :param source_node:
+        :param graph:
+        :param maximum_matching_tungraph:
+        :param unmatched_nodes:
+        :param create_bfs_tree:
+        :param return_path_to_unmatched_node:
+        :return: True node is intermittent, False if node is redundant
+        """
+        networkx_graph = None
+        if return_path_to_unmatched_node is True:
+            networkx_graph = nx.DiGraph()
 
         # todo instead of bfs tree maintain a vector, no need to waste process power on this
         bfs_tree = snap.PUNGraph.New()
         bfs_tree.AddNode(source_node)
+
+        # special case when no link exists the node is redundant
+        if len(list(graph.GetNI(source_node).GetOutEdges())) == 0:
+            return False, bfs_tree, None
 
         # used TIntV (vector) as queue
         queue = snap.TIntV()
@@ -374,12 +404,19 @@ class Control:
                             # id current link is not matched, look for a matched link
                             continue
 
+                    bfs_tree.AddNode(v)
+                    if create_bfs_tree is True:
+                        bfs_tree.AddEdge(u, v)
+
+                    if return_path_to_unmatched_node is True:
+                        networkx_graph.add_edge(u, v)
+
                     # probably dont need "look_for_unmatched_link is True" but just as an insurance
                     if look_for_unmatched_link is True and v in unmatched_nodes:
-                        return True
+                        if return_path_to_unmatched_node is True:
+                            return True, bfs_tree, nx.shortest_path(networkx_graph, source_node, v)
 
-                    bfs_tree.AddNode(v)
-                    # bfs_tree.AddEdge(u, v)
+                        return True, bfs_tree, None
 
                     queue.Add(v)
 
@@ -388,12 +425,19 @@ class Control:
         # snap.GetShortPath_PUNGraph(bfs_tree, 1, 10)
 
         # print ([(e.GetSrcNId(), e.GetDstNId()) for e in bfs_tree.Edges()])
-        return False
+        return False, bfs_tree, None
 
         # return bfs_tree
 
     def snap_find_redundant_intermittent_critical_nodes(self):
         bipartite_representation_tungraph = self.snap_load_bipartite_representation_cnetwork().graph
+
+        if self.network.experiment.draw_graphs:
+            tools.snap_draw(
+                bipartite_representation_tungraph,
+                tools.relative_path("/temp/work/draw/bipartite_representation_tungraph.png"),
+                "bipartite_representation_tungraph")
+            # tools.snap_draw(bipartite_representation_tungraph, "d:\\wtf.png")
 
         # contains matched links
         maximum_matching_tungraph = self.snap_load_maximum_matching_cnetwork().graph
@@ -416,12 +460,12 @@ class Control:
 
             bipartite_representation_tungraph.DelNode(matched_node_id)
 
-            is_path_to_unmatched_node_exists = self.snap_is_path_to_unmatched_node_exists(
+            is_path_to_unmatched_node_exists, bfs_tree, augmenting_path = self.snap_is_path_to_unmatched_node_exists(
                 source_node=j,
                 graph=bipartite_representation_tungraph,
                 maximum_matching_tungraph=maximum_matching_tungraph,
-                unmatched_nodes=[u[0] for u in unmatched_nodes]
-
+                unmatched_nodes=[u[0] for u in unmatched_nodes],
+                return_path_to_unmatched_node=True
                 # matched_edges=[(e.GetSrcNId(), e.GetDstNId()) for e in maximum_matching_tungraph.Edges()]
             )
 
@@ -437,18 +481,20 @@ class Control:
                 bipartite_representation_tungraph.AddEdge(matched_node_neighbor, matched_node_id)
                 # ;;;;;;;;;;;;;;;;; re-add the deleted node and its edges ;;;;;;;;;;;;
 
+        n = bipartite_representation_tungraph.GetNodes() / 2  # its the bipartite representation
+
         if self.network.experiment.debug:
             print (
-                "\n[# number of Redundant nodes] %d | %s" % (
-                    len(redundant_nodes),
+                "\n[# number of Redundant nodes] %f | %s" % (
+                    round(len(redundant_nodes) / float(n), 3),
                     str(redundant_nodes) if len(redundant_nodes) < 100 else "too big"))
             print (
-                "[# number of Intermittent nodes] %d | %s" % (
-                    len(intermittent_nodes),
+                "[# number of Intermittent nodes] %f | %s" % (
+                    round(len(intermittent_nodes) / float(n), 3),
                     str(intermittent_nodes) if len(intermittent_nodes) < 100 else "too big"))
             print (
-                "[# number of Critical nodes] %d | %s" % (
-                    len(critical_nodes),
+                "[# number of Critical nodes] %f | %s" % (
+                    round(len(critical_nodes) / float(n), 3),
                     str(critical_nodes) if len(critical_nodes) < 100 else "too big"))
 
         # print ("redundant_nodes: %s intermittent_nodes: %s critical_nodes: %s" % (
