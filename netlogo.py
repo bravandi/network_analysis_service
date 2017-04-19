@@ -30,6 +30,7 @@ def identify_nodes_control_types(path):
     mds_who = ''
 
     for node in redundant_nodes:
+
         redundant_nodes_who += dict(net.nodes(True))[node]['WHO'][:-2] + ' '
 
     for node in intermittent_nodes:
@@ -58,6 +59,7 @@ pass
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
-        raise Exception("ptch must be given")
-
-    identify_nodes_control_types(sys.argv[1])
+        identify_nodes_control_types('d:\\temp\\netlogo-diffusion.gml')
+        # raise Exception("path must be given")
+    else:
+        identify_nodes_control_types(sys.argv[1])

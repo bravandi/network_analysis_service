@@ -195,7 +195,7 @@ def gnc_graph(n, create_using=None, seed=None):
     return G
 
 
-def scale_free_graph(n, alpha=0.41, beta=0.54, gamma=0.05, delta_in=0.2,
+def scale_free_graph(n, k, alpha=0.41, beta=0.54, gamma=0.05, delta_in=0.2,
                      delta_out=0, create_using=None, seed=None, node_added=None):
     """Returns a scale-free directed graph.
 
@@ -279,7 +279,9 @@ def scale_free_graph(n, alpha=0.41, beta=0.54, gamma=0.05, delta_in=0.2,
     # seed random number generated (uses None as default)
     random.seed(seed)
 
-    while len(G) < n:
+    edges_num = 0
+    # while len(G) < n:
+    while edges_num / n != k:
         r = random.random()
         # random choice in alpha,beta,gamma ranges
         if r < alpha:
@@ -304,6 +306,10 @@ def scale_free_graph(n, alpha=0.41, beta=0.54, gamma=0.05, delta_in=0.2,
 
         if node_added is not None:
             node_added(G)
+
+        G.remove_edges_from(G.selfloop_edges())
+
+        edges_num = len(G.edges())
 
     return G
 

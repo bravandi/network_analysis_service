@@ -211,10 +211,13 @@ class Control:
         for node in self.network.graph.Nodes():
             node_id = node.GetId()
 
+            # if b_graph.IsNode(node_id):
+            #     assert True, "Why"
+
             b_graph.AddNode(node_id)  # out_set (edge.GetSrcNId())
             out_set.Add(node_id)
 
-            in_set_node_id = n + node_id
+            in_set_node_id = n + node_id + 1
 
             b_graph.AddNode(in_set_node_id)  # in_set (edge.GetDstNId())
             in_set.Add(in_set_node_id)
@@ -223,7 +226,7 @@ class Control:
             # edges are from out_set to in_set
 
             bipartite_edge_source_node = edge.GetSrcNId()  # belongs out_set
-            bipartite_edge_destination_node = n + edge.GetDstNId()  # belongs in_set
+            bipartite_edge_destination_node = n + edge.GetDstNId() + 1  # belongs in_set | +1 for in case node id is 0
 
             if b_graph.IsEdge(source_node, bipartite_edge_source_node) is False:
                 b_graph.AddEdge(source_node, bipartite_edge_source_node)
@@ -310,10 +313,11 @@ class Control:
 
         for node in in_set:
             if maximum_matching_graph.graph.IsNode(node):
-                matched_nodes_inset.append((node, node - n))
+                # -1 is important
+                matched_nodes_inset.append((node, node - n - 1))
             else:
-                node_id = node - n
-                unmatched_nodes_inset.append((node, node - n))
+                node_id = node - n - 1
+                unmatched_nodes_inset.append((node, node_id))
                 mds.append(node_id)
 
         with open(self.get_path_control_unmatched_nodes_inset(), 'w') as outfile:
@@ -432,11 +436,11 @@ class Control:
     def snap_find_redundant_intermittent_critical_nodes(self):
         bipartite_representation_tungraph = self.snap_load_bipartite_representation_cnetwork().graph
 
-        if self.network.experiment.draw_graphs:
-            tools.snap_draw(
-                bipartite_representation_tungraph,
-                tools.relative_path("/temp/work/draw/bipartite_representation_tungraph.png"),
-                "bipartite_representation_tungraph")
+        # if self.network.experiment.draw_graphs:
+        #     tools.snap_draw(
+        #         bipartite_representation_tungraph,
+        #         tools.relative_path("/temp/work/draw/bipartite_representation_tungraph.png"),
+        #         "bipartite_representation_tungraph")
             # tools.snap_draw(bipartite_representation_tungraph, "d:\\wtf.png")
 
         # contains matched links

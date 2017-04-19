@@ -5,6 +5,7 @@ import subprocess
 import networkx as nx
 import snap
 import constants
+from Tkinter import Tk
 
 
 def relative_path(path):
@@ -35,7 +36,7 @@ def convert_string_datetime(input):
         return datetime.strptime(input.split('.')[0], "%Y-%m-%d %H:%M:%S")
 
 
-def get_time_difference(start_time, end_time=None):
+def get_time_difference_seconds(start_time, end_time=None):
     if isinstance(start_time, str):
         start_time = convert_string_datetime(start_time)
 
@@ -175,6 +176,22 @@ def get_path_for_tenant(var=""):
     return "/home/centos/" + var
 
 
+def clipboard_copy(str):
+    r = Tk()
+    r.withdraw()
+    r.clipboard_clear()
+    r.clipboard_append(str)
+    r.destroy()
+
+
+def directory_files(from_path):
+    for (dirpath, dirnames, filenames) in os.walk(from_path):
+        if dirpath == from_path:
+            return filenames
+
+    return None
+
+
 if __name__ == '__main__':
     # out = run_command2("ls /root > ls.out")
     # print ("ou: " + out)
@@ -182,3 +199,5 @@ if __name__ == '__main__':
 
 
     pass
+
+
