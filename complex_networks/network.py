@@ -473,7 +473,7 @@ class Network:
     @staticmethod
     def networkx_create_from_gml(path, experiment=None, db_id=None, name=""):
 
-        return networkx_gml.read_gml(path, label='id')
+        return networkx_gml.read_gml(path, label='WHO')
 
         # complex_network = Network(
         #     experiment=experiment,

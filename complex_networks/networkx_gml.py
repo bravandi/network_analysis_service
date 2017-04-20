@@ -219,9 +219,24 @@ def read_gml(path, label='label', destringizer=None):
 
             if check_creator and len(line.split('Creator')) == 2: continue
 
-            yield line
+            if line.strip().startswith("WHO \""):
 
-    G = parse_gml_lines(filter_lines(path), label, destringizer)
+                yield 'WHO %d \n' % (int(float(line.split('"')[1])))
+                # yield '    WHO 12\n'
+            elif line.strip().startswith("label \""):
+                line_val = line[line.index('label') + 5: len(line) - 1]
+                line_val = line_val.replace('"', '')
+                try:
+                    yield 'label %d \n' % (int(float(line_val)))
+                except ValueError:
+                    yield line
+
+            else:
+                yield line
+
+    lines = filter_lines(path)
+
+    G = parse_gml_lines(lines, label, destringizer)
     return G
 
 

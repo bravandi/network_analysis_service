@@ -4,13 +4,13 @@ from complex_networks.experiment import Experiment
 import complex_networks.constants as constants
 
 
-def identify_nodes_control_types(path):
+def identify_nodes_control_types(path, debug=False, draw_graphs=False):
     net = Network.networkx_create_from_gml(
         path=path
         # path="D:\\SoftwareProject\\complex_networks_tools\\data\\Neural Network\\celegansneural.gml"
     )
 
-    ex = Experiment(debug=False, draw_graphs=False)
+    ex = Experiment(debug=debug, draw_graphs=draw_graphs)
 
     cnetwork = ex.networkx_to_snap_cnetwork(
         networkx=net,
@@ -31,16 +31,16 @@ def identify_nodes_control_types(path):
 
     for node in redundant_nodes:
 
-        redundant_nodes_who += dict(net.nodes(True))[node]['WHO'][:-2] + ' '
+        redundant_nodes_who += str(dict(net.nodes(True))[node]['WHO']) + ' '
 
     for node in intermittent_nodes:
-        intermittent_nodes_who += dict(net.nodes(True))[node]['WHO'][:-2] + ' '
+        intermittent_nodes_who += str(dict(net.nodes(True))[node]['WHO']) + ' '
 
     for node in critical_nodes:
-        critical_nodes_who += dict(net.nodes(True))[node]['WHO'][:-2] + ' '
+        critical_nodes_who += str(dict(net.nodes(True))[node]['WHO']) + ' '
 
     for node in mds:
-        mds_who += dict(net.nodes(True))[node]['WHO'][:-2] + ' '
+        mds_who += str(dict(net.nodes(True))[node]['WHO']) + ' '
 
     result = "r:[%s]:r i:[%s]:i c:[%s]:c mds:[%s]:mds" % \
              (
@@ -59,7 +59,7 @@ pass
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
-        identify_nodes_control_types('d:\\temp\\netlogo-diffusion.gml')
+        identify_nodes_control_types('d:\\temp\\netlogo-diffusion.gml', debug=True, draw_graphs=True)
         # raise Exception("path must be given")
     else:
-        identify_nodes_control_types(sys.argv[1])
+        identify_nodes_control_types(sys.argv[1], draw_graphs=True)

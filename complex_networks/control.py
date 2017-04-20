@@ -242,6 +242,13 @@ class Control:
         return out_set, in_set, b_graph, source_node, sink_node
 
     def snap_find_mds_minimum_driver_node_set(self):
+
+        if self.network.experiment.draw_graphs:
+            tools.snap_draw(
+                self.network.graph,
+                "%s/%d/graph.png" % (constants.path_draw_graphs, self.network.network_id),
+                "Given Graph")
+
         # identify critical control nodes
         with open(self.get_path_critical_control_nodes(), 'w') as writefile:
             json.dump([n.GetId() for n in self.network.graph.Nodes() if n.GetInDeg() == 0], writefile)
@@ -257,7 +264,7 @@ class Control:
         if self.network.experiment.draw_graphs:
             tools.snap_draw(
                 b_graph,
-                tools.relative_path("/temp/work/draw/b_graph_maxflow.png"),
+                "%s/%d/b_graph_maxflow.png" % (constants.path_draw_graphs, self.network.network_id),
                 "max flow")
         # ;;;;;;;;;;;;;;;;;;;;;;;; save bipartite representation ;;;;;;;;;;;;;;;;;;;;
         b_graph.DelNode(source_node)
@@ -293,7 +300,7 @@ class Control:
             graph_path=path_maximum_matching,
             model=constants.NetworkModel.bipartite_matching(),
             name='BIPARTITE MATCHING - ' + self.network.name,
-            network_id=0,
+            network_id=self.network.network_id,
             directed=False
         )
 

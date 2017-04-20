@@ -25,6 +25,10 @@ def networkx_draw(G, path):
 
 
 def snap_draw(G, path, name="graph 1"):
+    path = os.path.realpath(path)
+    if not os.path.exists(os.path.dirname(path)):
+        os.makedirs(os.path.dirname(path))
+
     snap.DrawGViz(G, snap.gvlDot, path, name, True)
 
 

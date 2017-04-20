@@ -6,6 +6,7 @@ import snap
 import networkx as nx
 import tools as tools
 
+
 class Experiment:
     def __init__(self, db_experiment_id=None, debug=False, draw_graphs=False):
         """
@@ -115,7 +116,7 @@ class Experiment:
                 path_parts = tmp.split('/')
                 tools.snap_draw(
                     snap_graph,
-                    tools.relative_path("/temp/work/draw/%s.png" % path_parts[len(path_parts) - 1]),
+                    "%s/%s/%s.png" % (constants.path_draw_graphs, network_id, path_parts[len(path_parts) - 1]),
                     path_parts[len(path_parts) - 1])
         else:
             if directed is True:
