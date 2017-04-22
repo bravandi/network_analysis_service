@@ -97,7 +97,7 @@ class Experiment:
 
         return q
 
-    def snap_load_network(self, graph_path, name, network_id, directed=True,
+    def snap_load_network(self, graph_path, name, is_binary_file, network_id, directed=True,
                           model=constants.NetworkModel.real_network(), initialize_graph=True):
 
         q = Network(
@@ -113,14 +113,22 @@ class Experiment:
             path_t = os.path.abspath(constants.path_work + graph_path)
 
         if initialize_graph:
+            FIn = snap.TFIn(path_t)
+
             if directed is True:
+                if is_binary_file:
+                    raise Exception("Binary graph for this part is not handles")
+                # snap_graph = snap.PNGraph.Load(FIn)
                 snap_graph = snap.LoadEdgeList(
                     snap.PNGraph,
                     path_t, 0, 1)
             else:
-                snap_graph = snap.LoadEdgeList(
-                    snap.PUNGraph,  # PNEANet -> load directed network  |  PUNGraph -> load directed graph
-                    path_t, 0, 1)
+                if is_binary_file:
+                    snap_graph = snap.TNEANet.Load(FIn)
+                else:
+                    snap_graph = snap.LoadEdgeList(
+                        snap.PUNGraph,  # PNEANet -> load directed network  |  PUNGraph -> load directed graph
+                        path_t, 0, 1)
 
             if self.draw_graphs:
                 tmp = graph_path.replace('\\', '/')

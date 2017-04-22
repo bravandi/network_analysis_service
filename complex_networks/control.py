@@ -212,7 +212,8 @@ class Control:
             node_id = node.GetId()
 
             # if b_graph.IsNode(node_id):
-            #     assert True, "Why"
+            #     print ([n.GetId() for n in b_graph.Nodes()])
+            #     assert True, "Why node exists already!!??"
 
             b_graph.AddNode(node_id)  # out_set (edge.GetSrcNId())
             out_set.Add(node_id)
@@ -253,25 +254,29 @@ class Control:
         with open(self.get_path_critical_control_nodes(), 'w') as writefile:
             json.dump([n.GetId() for n in self.network.graph.Nodes() if n.GetInDeg() == 0], writefile)
 
-        out_set, in_set, b_graph, source_node, sink_node = \
+        out_set, in_set, graph_max_flow_representation, source_node, sink_node = \
             self.snap_di_graph_bipartite_representation_reduced_max_flow()
 
         path_bipartite_representation_reduced_max_flow = \
             self.get_path_bipartite_representation_reduced_max_flow_graph()
 
-        snap.SaveEdgeList(b_graph, path_bipartite_representation_reduced_max_flow,
+        snap.SaveEdgeList(graph_max_flow_representation, path_bipartite_representation_reduced_max_flow,
                           "Save as tab-separated list of edges")
+
         if self.network.experiment.draw_graphs:
             tools.snap_draw(
-                b_graph,
+                graph_max_flow_representation,
                 "%s/%s/b_graph_maxflow" % (constants.path_draw_graphs, self.network.experiment.root_folder_work),
                 "max flow")
         # ;;;;;;;;;;;;;;;;;;;;;;;; save bipartite representation ;;;;;;;;;;;;;;;;;;;;
-        b_graph.DelNode(source_node)
-        b_graph.DelNode(sink_node)
+        graph_max_flow_representation.DelNode(source_node)
+        graph_max_flow_representation.DelNode(sink_node)
 
-        snap.SaveEdgeList(b_graph, self.get_path_bipartite_representation_graph(),
+        snap.SaveEdgeList(graph_max_flow_representation, self.get_path_bipartite_representation_graph(),
                           "Save as tab-separated list of edges")
+        # FOut = snap.TFOut(self.get_path_bipartite_representation_graph())
+        # graph_max_flow_representation.Save(FOut)
+        # FOut.Flush()
         # ;;;;;;;;;;;;;;;;;;;;;;;; save bipartite representation ;;;;;;;;;;;;;;;;;;;;
 
         path_maximum_matching = self.get_path_maximum_matching_graph()
@@ -298,6 +303,7 @@ class Control:
 
         maximum_matching_graph = self.network.experiment.snap_load_network(
             graph_path=path_maximum_matching,
+            is_binary_file=False,
             model=constants.NetworkModel.bipartite_matching(),
             name='BIPARTITE MATCHING - ' + self.network.name,
             network_id=self.network.network_id,
@@ -345,16 +351,18 @@ class Control:
     def snap_load_maximum_matching_cnetwork(self):
         return self.network.experiment.snap_load_network(
             graph_path=self.get_path_maximum_matching_graph(),
+            is_binary_file=False,
             model=constants.NetworkModel.bipartite_matching(),
             name='MAXIMUM MATCHING - ' + self.network.name,
             network_id=self.network.network_id,
             directed=False
         )
 
-    # todo impliment caching
+    # todo implement caching
     def snap_load_bipartite_representation_cnetwork(self):
         return self.network.experiment.snap_load_network(
             graph_path=self.get_path_bipartite_representation_graph(),
+            is_binary_file=False,
             model=constants.NetworkModel.bipartite_matching(),
             name='BIPARTITE REPRESENTATION - ' + self.network.name,
             network_id=self.network.network_id,

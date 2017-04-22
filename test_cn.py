@@ -51,6 +51,7 @@ def create_experiment_network(initialize):
         network_id=0,
         name='small_sample',
 
+        is_binary_file=False,
         initialize_graph=initialize,
         model=constants.NetworkModel.real_network(),
 
@@ -129,6 +130,7 @@ def load_network_from_text(path):
         network_id=GeneralTools.generate_random_network_id(),
         name='small_sample',
 
+        is_binary_file=False,
         initialize_graph=True,
         model=constants.NetworkModel.real_network(),
 
@@ -609,6 +611,8 @@ class GeneralTools:
 
     @staticmethod
     def copy_graphs_with_respecting_to_redundant_percentage(from_path, to_path):
+        if not os.path.exists(from_path):
+            return "frompath does not exists"
 
         if not os.path.exists(to_path):
             os.makedirs(to_path)
@@ -711,6 +715,15 @@ class GeneralTools:
         print(nx.clustering(G2))
         pass
 
+    @staticmethod
+    def filter_and_copy_generated_graphs():
+        for i in range(5, 31):
+            number = 'n_' + str(i)
+            GeneralTools.copy_graphs_with_respecting_to_redundant_percentage(
+                from_path="D:\\Temp\\random_graph\\" + number,
+                to_path="D:\\Temp\\low_r\\" + number
+            )
+
 
 class RandomGraphs:
     @staticmethod
@@ -797,6 +810,7 @@ class RandomGraphs:
     ):
         if isinstance(input_networkx_graph, nx.Graph) is True:
             tmp = nx.DiGraph()
+            tmp.add_nodes_from(input_networkx_graph.nodes())
             tmp.add_edges_from(input_networkx_graph.edges())
 
             input_networkx_graph = tmp
@@ -804,7 +818,6 @@ class RandomGraphs:
 
         if network_id is None:
             network_id = GeneralTools.generate_random_network_id()
-        network_id = 501
 
         perc_r_orig, redundant_nodes_orig, intermittent_nodes_orig, critical_nodes_orig, mds_orig, other_output_orig = \
             GeneralTools.identify_node_types(
@@ -1050,30 +1063,31 @@ class RandomGraphs:
 if __name__ == '__main__':
     start_time = datetime.now()
     print ("started: " + str(start_time) + "\n;;;;;;;;;;;;;;")
-    path = "D:\\temp\\low_r\\n_5\\0.2000r_0.2000_k_0001.8000_n_000005_l_0000000009_p_00.9000_DegreeVariance_0000.2400.gml"
 
-    # RandomGraphs.repeat_experiment()
+    # path = "D:\\temp\\low_r\\n_5\\0.2000r_0.2000_k_0001.8000_n_000005_l_0000000009_p_00.9000_DegreeVariance_0000.2400.gml"
+    path = "D:\\temp\\low_r\\n_20\\0.2000r_0.2000_k_0000.9000_n_000020_l_0000000018_p_00.1000_DegreeVariance_0002.3600.gml"
+    path_parts = path.split('\\')
     G = Network.networkx_create_from_gml(
         # path="d:\\temp\\netlogo-diffusion2.gml"
         # path="d:\\temp\\netlogo-diffusion.gml"
         # path="D:\\temp\\low_r\\n_15\\0.1330r_0.1330_k_0006.4000_n_000015_l_0000000096_p_00.9000_DegreeVariance_0001.2267.gml"
         # path="D:\\SoftwareProject\\complex_networks_tools\\data\\Neural Network\\celegansneural.gml"
-        path="D:\\temp\\low_r\\n_5\\0.2000r_0.2000_k_0001.8000_n_000005_l_0000000009_p_00.9000_DegreeVariance_0000.2400.gml"
+        path=path
         # path="D:\\temp\\random_graph\\n_11\\r_0.0000_k_0004.1818_n_000011_l_0000000046_p_00.8000_DegreeVariance_0001.6860.gml"
     )
-    # GeneralTools.identify_node_types(networkx_digraph=G, debug=True, draw_graphs=True, show_plots=False, network_id=1)
-
     RandomGraphs.experiment_switch_link_direction(
-        G, "0.2000r_0.2000_k_0001.8000_n_000005_l_0000000009_p_00.9000_DegreeVariance_0000.2400")
+        input_networkx_graph=G, root_folder_work=path_parts[len(path_parts) - 1][:-4], draw_graphs=True,
+        network_id=None, draw_bipartite_matching_for_each_node_switch=True)
+
+    # RandomGraphs.repeat_experiment()
+
+    # GeneralTools.identify_node_types(networkx_digraph=G, debug=True, draw_graphs=True, show_plots=False, network_id=1)
 
     # RandomGraphs.load_undirected_convert_to_directed()
     # GeneralTools.gml_stats()
     # GeneralTools.copy_graphs_with_respecting_to_redundant_percentage()
 
-    # GeneralTools.copy_graphs_with_respecting_to_redundant_percentage(
-    #     from_path="D:\\Temp\\random_graph\\n_11",
-    #     to_path="D:\\Temp\\low_r\\n_11"
-    # )
+    # GeneralTools.filter_and_copy_generated_graphs()
 
     # load_network_from_text(path="d:\\temp\\g.txt")
 

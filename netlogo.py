@@ -10,7 +10,7 @@ def identify_nodes_control_types(path, debug=False, draw_graphs=False):
         # path="D:\\SoftwareProject\\complex_networks_tools\\data\\Neural Network\\celegansneural.gml"
     )
 
-    ex = Experiment(debug=debug, draw_graphs=draw_graphs)
+    ex = Experiment(debug=debug, draw_graphs=draw_graphs, root_folder_work='NetLogo')
 
     cnetwork = ex.networkx_to_snap_cnetwork(
         networkx=net,
