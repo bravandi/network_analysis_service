@@ -34,6 +34,10 @@ def relative_path(path):
     return os.path.abspath(constants.path_work + path)
 
 
+def absolute_path(path):
+    return os.path.abspath(path)
+
+
 def networkx_draw(G, path):
     pos = nx.nx_pydot.graphviz_layout(G)
 

@@ -1,4 +1,5 @@
 import random
+import pprint
 from Tkinter import Tk
 from complex_networks.network import Network
 from complex_networks.experiment import Experiment
@@ -528,6 +529,7 @@ class GeneralTools:
 
         perc_r = round(float(len(redundant_nodes)) / len(networkx_digraph.nodes()), 3)
         perc_c = round(float(len(critical_nodes)) / len(networkx_digraph.nodes()), 3)
+        perc_i = round(float(len(intermittent_nodes)) / len(networkx_digraph.nodes()), 3)
 
         print ("   -->N-r: **{} N-c: {} time took to process: {} seconds".format(
             perc_r,
@@ -538,6 +540,8 @@ class GeneralTools:
         other_output['experiment'] = ex
         other_output['network_cn'] = network_cn
         other_output['augmenting_path_list'] = augmenting_path_list
+        other_output['perc_c'] = perc_c
+        other_output['perc_i'] = perc_i
 
         if draw_graphs is True:
             GeneralTools.draw_bipartite_rep_graph(
@@ -806,7 +810,7 @@ class RandomGraphs:
     @staticmethod
     def experiment_switch_link_direction(
             input_networkx_graph, root_folder_work, draw_graphs=True, network_id=None,
-            draw_bipartite_matching_for_each_node_switch=True
+            draw_bipartite_matching_for_each_link_switch=True
     ):
         if isinstance(input_networkx_graph, nx.Graph) is True:
             tmp = nx.DiGraph()
@@ -841,8 +845,8 @@ class RandomGraphs:
             file_name='{0:04d}_Nr_{1:07.4f}_{2}'.format(0, perc_r_orig, 'bipartite_rep_multigraph_color'),
             network_cn=network_cn_orig, augmenting_path_list=augmenting_path_list_orig)
 
-        edges_centrality = nx.edge_betweenness_centrality(networkx_bipartite_representation_orgi)
-        nodes_centrality = nx.betweenness_centrality(networkx_bipartite_representation_orgi)
+        edges_centrality_orgi = nx.edge_betweenness_centrality(networkx_bipartite_representation_orgi)
+        nodes_centrality_orgi = nx.betweenness_centrality(networkx_bipartite_representation_orgi)
 
         n = len(input_networkx_graph.nodes())
         i = 1
@@ -877,7 +881,7 @@ class RandomGraphs:
                 netx_g.add_edge(edge[1], edge[0] + (n + 1), color='green')
                 pass
 
-            if draw_bipartite_matching_for_each_node_switch:
+            if draw_bipartite_matching_for_each_link_switch:
                 ex.root_folder_work = ex.root_folder_work.split('\\')[0] + "\\switched_links"
                 GeneralTools.draw_bipartite_rep_graph(
                     ex=ex, snap_graph=other_output['bipartite_representation_tungraph'],
@@ -892,49 +896,95 @@ class RandomGraphs:
 
             input_networkx_graph_2.add_edge(edge[0], edge[1], color='blue')
 
+            # ;;;;;;;;;;;;;;;; start analyses on the bipartite representation of the input graph ;;;;;;;;;;;;;;;
+
+            input_graph_total_degree = networkx_bipartite_representation_orgi.degree()
+            # input_graph_in_degree = networkx_bipartite_representation_orgi.in_degree()
+            # input_graph_out_degree = networkx_bipartite_representation_orgi.out_degree()
             stats[(edge[0], edge[1])] = {
                 'Nr': perc_r,
-                'bipartite_edge_centrality': edges_centrality[(edge[0], edge[1] + (n + 1))],
-                'from_centrality': nodes_centrality[edge[0]],
-                'to_centrality': nodes_centrality[edge[1] + (n + 1)]
+                'Ni': other_output['perc_i'],
+                'Nc': other_output['perc_c'],
+                'bipartite_edge_centrality': edges_centrality_orgi[(edge[0], edge[1] + (n + 1))],
+                'from_node_centrality': nodes_centrality_orgi[edge[0]],
+                'to_node_centrality': nodes_centrality_orgi[edge[1] + (n + 1)],
+                'from_node_degrees': "total: {}".format(input_graph_total_degree[edge[0]])
             }
 
             i += 1
 
         # print (stats[(8, 10)])
-        tmp2 = []
+        Nr_bigger_09 = []
         other_nodes = []
         for item, value in stats.items():
             if value["Nr"] > 0.9:
-                tmp2.append(value)
+                Nr_bigger_09.append(value)
             else:
                 other_nodes.append(value)
 
         def calc_cent(x, key):
             try:
-                return ("{0} centrality mean: {1}".format(key, np.mean([nc[key] for nc in x])))
+                return ("{0} centrality mean: {1}\n".format(key, np.mean([nc[key] for nc in x])))
             except Exception:
-                return None
+                return ("{0} centrality mean: {1}\n".format(key, "None"))
 
+        output = ""
         # edges_cent2 = sorted(edges_cent.items(), key=operator.itemgetter(1), reverse=True)
-        print (calc_cent(tmp2, 'from_centrality'))
-        print (calc_cent(tmp2, 'to_centrality'))
-        print (calc_cent(tmp2, 'bipartite_edge_centrality'))
-        print (';;;;;;;;;;;;;; not significant ;;;;;;;;;;;;;')
-        print (calc_cent(other_nodes, 'from_centrality'))
-        print (calc_cent(other_nodes, 'to_centrality'))
-        print (calc_cent(other_nodes, 'bipartite_edge_centrality'))
-        print (';;;;;;;;;;;;;; All Nodes ;;;;;;;;;;;;;')
-        print (calc_cent(stats.values(), 'from_centrality'))
-        print (calc_cent(stats.values(), 'to_centrality'))
-        print (calc_cent(stats.values(), 'bipartite_edge_centrality'))
+        output += "\n\tNr > 0.9\n"
+        output += calc_cent(Nr_bigger_09, 'from_centrality')
+        output += calc_cent(Nr_bigger_09, 'to_centrality')
+        output += calc_cent(Nr_bigger_09, 'bipartite_edge_centrality')
+        # print (';;;\t;;;;;;;;;;; not significant ;;;;;;;;;;;;;')
+        output += "\n\tOther nodes\n"
+        output += calc_cent(other_nodes, 'from_centrality')
+        output += calc_cent(other_nodes, 'to_centrality')
+        output += calc_cent(other_nodes, 'bipartite_edge_centrality')
+        # print (';;;;;;;;;;;;;; All Nodes ;;;;;;;;;;;;;')
+        output += "\n\tAll nodes together\n"
+        output += calc_cent(stats.values(), 'from_centrality')
+        output += calc_cent(stats.values(), 'to_centrality')
+        output += calc_cent(stats.values(), 'bipartite_edge_centrality')
 
-        print ("closeness_centrality: {}".format(
-            nx.bipartite.closeness_centrality(networkx_bipartite_representation_orgi,
-                                              networkx_bipartite_representation_orgi.nodes())))
-        print ("latapy_clustering: {}".format(
-            nx.bipartite.latapy_clustering(networkx_bipartite_representation_orgi,
-                                           networkx_bipartite_representation_orgi.nodes())))
+        def normalize_dictionary(dict, input_graph_n):
+            result = {}
+            for index in range(0, (input_graph_n * 2) + 1):
+                if index == input_graph_n:
+                    result[index] = "InSet"
+                    continue
+
+                if dict.has_key(index):
+                    result[index] = "{0:05.2f}".format(round(dict[index], 3))
+                else:
+                    result[index] = "NaN"
+
+            return result
+
+        output += "\n\tCentrality (starting index {0} is the InSet. Do -{1} to get original node id. " \
+                  "\n\tThere is no node {0} in the bipartite representation of the graph):\n".format(n, n + 1)
+
+        output += "closeness_centrality: {}\n\n".format(
+            # pprint.pformat(
+            normalize_dictionary(nx.bipartite.closeness_centrality(networkx_bipartite_representation_orgi,
+                                                                   networkx_bipartite_representation_orgi.nodes()),
+                                 len(input_networkx_graph))
+            # )
+        )
+
+        output += "latapy_clustering   : {}\n".format(
+            # pprint.pformat(
+            normalize_dictionary(nx.bipartite.latapy_clustering(networkx_bipartite_representation_orgi,
+                                                                networkx_bipartite_representation_orgi.nodes()),
+                                 len(input_networkx_graph))
+            # )
+        )
+
+        output += ("\n\tstats switch link results:\n {}".format(pprint.pformat(stats)))
+
+        with open(tools.absolute_path(
+                "{}{}/output.txt".format(constants.path_draw_graphs, root_folder_work)), 'w') as writefile:
+            writefile.write(output)
+
+        print (output)
 
     @staticmethod
     def repeat_experiment():
@@ -1065,7 +1115,9 @@ if __name__ == '__main__':
     print ("started: " + str(start_time) + "\n;;;;;;;;;;;;;;")
 
     # path = "D:\\temp\\low_r\\n_5\\0.2000r_0.2000_k_0001.8000_n_000005_l_0000000009_p_00.9000_DegreeVariance_0000.2400.gml"
-    path = "D:\\temp\\low_r\\n_20\\0.2000r_0.2000_k_0000.9000_n_000020_l_0000000018_p_00.1000_DegreeVariance_0002.3600.gml"
+    # path = "D:\\temp\\low_r\\n_20\\0.2500r_0.2500_k_0005.8500_n_000020_l_0000000117_p_00.6000_DegreeVariance_0003.9100.gml"
+    path = "D:\\temp\\low_r\\n_5\\0.2000r_0.2000_k_0001.8000_n_000005_l_0000000009_p_00.9000_DegreeVariance_0000.2400.gml"
+
     path_parts = path.split('\\')
     G = Network.networkx_create_from_gml(
         # path="d:\\temp\\netlogo-diffusion2.gml"
@@ -1077,7 +1129,7 @@ if __name__ == '__main__':
     )
     RandomGraphs.experiment_switch_link_direction(
         input_networkx_graph=G, root_folder_work=path_parts[len(path_parts) - 1][:-4], draw_graphs=True,
-        network_id=None, draw_bipartite_matching_for_each_node_switch=True)
+        network_id=None, draw_bipartite_matching_for_each_link_switch=False)
 
     # RandomGraphs.repeat_experiment()
 
