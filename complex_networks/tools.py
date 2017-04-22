@@ -50,7 +50,13 @@ def networkx_draw(G, path):
     nx.nx_pydot.write_dot(G, path + '.dot')
 
     # run_command("dot -Tpng %s > %s" % (path + '.dot', path))
-    run_command("dot -Tpng %s -o %s" % (path + '.dot', path), no_pipe=True)
+    run_command("dot -Tjpg %s -o %s" % (path + '.dot', path), no_pipe=True)
+
+
+def create_path_if_not_exists(path):
+    path = os.path.realpath(path)
+    if not os.path.exists(os.path.dirname(path)):
+        os.makedirs(os.path.dirname(path))
 
 
 def snap_draw(G, path, name="graph 1"):
@@ -58,7 +64,7 @@ def snap_draw(G, path, name="graph 1"):
     if not os.path.exists(os.path.dirname(path)):
         os.makedirs(os.path.dirname(path))
 
-    snap.DrawGViz(G, snap.gvlDot, path, name, True)
+    snap.DrawGViz(G, snap.gvlDot, path + ".png", name, True)
 
 
 def convert_string_datetime(input):

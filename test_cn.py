@@ -499,9 +499,9 @@ class ScaleFree:
 class GeneralTools:
     @staticmethod
     def identify_node_types(
-            networkx_digraph, debug=False, draw_graphs=False, show_plots=False,
+            networkx_digraph, root_folder_work, debug=False, draw_graphs=False, show_plots=False,
             network_id=1):
-        ex = Experiment(debug=debug, draw_graphs=draw_graphs)
+        ex = Experiment(debug=debug, draw_graphs=draw_graphs, root_folder_work=root_folder_work)
         start_time_2 = datetime.now()
 
         if show_plots:
@@ -567,7 +567,7 @@ class GeneralTools:
 
         # tools.networkx_draw(
         #     G=networkx_graph,
-        #     path="%s/%s/%s.png" % (constants.path_draw_graphs, network_cn.network_id, "bipartite_rep_multi_edge"))
+        #     path="%s/%s/%s.jpg" % (constants.path_draw_graphs, network_cn.network_id, "bipartite_rep_multi_edge"))
 
         # network_x_bip_rep = network_cn.experiment.snap_to_networkx_cnetwork(
         #     snap_g=snap_graph, name=network_cn.name,
@@ -601,7 +601,9 @@ class GeneralTools:
 
         tools.networkx_draw(
             G=networkx_graph,
-            path="%s/%s/%s.png" % (constants.path_draw_graphs, network_cn.network_id, file_name))
+            # path="%s/%s/%s.jpg" % (constants.path_draw_graphs, network_cn.network_id, file_name)
+            path="%s/%s/%s.jpg" % (constants.path_draw_graphs, ex.root_folder_work, file_name)
+        )
 
         return networkx_graph
 
@@ -790,9 +792,16 @@ class RandomGraphs:
 
     @staticmethod
     def experiment_switch_link_direction(
-            input_networkx_graph, draw_graphs=False, network_id=None,
-            draw_bipartite_matching_for_each_node_switch=False
+            input_networkx_graph, root_folder_work, draw_graphs=True, network_id=None,
+            draw_bipartite_matching_for_each_node_switch=True
     ):
+        if isinstance(input_networkx_graph, nx.Graph) is True:
+            tmp = nx.DiGraph()
+            tmp.add_edges_from(input_networkx_graph.edges())
+
+            input_networkx_graph = tmp
+            del tmp
+
         if network_id is None:
             network_id = GeneralTools.generate_random_network_id()
         network_id = 501
@@ -800,18 +809,13 @@ class RandomGraphs:
         perc_r_orig, redundant_nodes_orig, intermittent_nodes_orig, critical_nodes_orig, mds_orig, other_output_orig = \
             GeneralTools.identify_node_types(
                 networkx_digraph=input_networkx_graph, debug=False, draw_graphs=draw_graphs, show_plots=False,
-                network_id=network_id
+                network_id=network_id, root_folder_work=root_folder_work
             )
 
         network_cn_orig = other_output_orig['network_cn']
         ex_orig = other_output_orig['experiment']
         augmenting_path_list_orig = other_output_orig['augmenting_path_list']
 
-        # network_x_bip_rep = ex.snap_to_networkx_cnetwork(
-        #     snap_g=other_output_orig['bipartite_representation_tungraph'], name=network_cn.name,
-        #     network_id=network_cn.network_id, model=network_cn.model, graph_type='undirected')
-
-        # G = network_x_bip_rep.graph
         n = len(input_networkx_graph.nodes())
 
         networkx_bipartite_representation_orgi = GeneralTools.draw_bipartite_rep_graph(
@@ -826,7 +830,6 @@ class RandomGraphs:
 
         edges_centrality = nx.edge_betweenness_centrality(networkx_bipartite_representation_orgi)
         nodes_centrality = nx.betweenness_centrality(networkx_bipartite_representation_orgi)
-        # edges_cent2 = sorted(edges_cent.items(), key=operator.itemgetter(1), reverse=True)
 
         n = len(input_networkx_graph.nodes())
         i = 1
@@ -848,8 +851,9 @@ class RandomGraphs:
 
             perc_r, redundant_nodes, intermittent_nodes, critical_nodes, mds, other_output = \
                 GeneralTools.identify_node_types(
-                    networkx_digraph=input_networkx_graph_2, debug=False, draw_graphs=draw_graphs, show_plots=False,
-                    network_id=network_id
+                    networkx_digraph=input_networkx_graph_2, debug=False, draw_graphs=draw_graphs,
+                    show_plots=False, network_id=network_id,
+                    root_folder_work="{}\\{}-{}".format(root_folder_work, edge[0], edge[1])
                 )
             network_cn = other_output['network_cn']
             ex = other_output['experiment']
@@ -861,6 +865,7 @@ class RandomGraphs:
                 pass
 
             if draw_bipartite_matching_for_each_node_switch:
+                ex.root_folder_work = ex.root_folder_work.split('\\')[0] + "\\switched_links"
                 GeneralTools.draw_bipartite_rep_graph(
                     ex=ex, snap_graph=other_output['bipartite_representation_tungraph'],
                     file_name="{0:04d}_Nr_{1:07.4f}_switchedEdge_{2}-{3}_to_{3}-{2}_({4}-{5}_to_{6}-{7})".format(
@@ -898,6 +903,7 @@ class RandomGraphs:
             except Exception:
                 return None
 
+        # edges_cent2 = sorted(edges_cent.items(), key=operator.itemgetter(1), reverse=True)
         print (calc_cent(tmp2, 'from_centrality'))
         print (calc_cent(tmp2, 'to_centrality'))
         print (calc_cent(tmp2, 'bipartite_edge_centrality'))
@@ -1044,24 +1050,29 @@ class RandomGraphs:
 if __name__ == '__main__':
     start_time = datetime.now()
     print ("started: " + str(start_time) + "\n;;;;;;;;;;;;;;")
+    path = "D:\\temp\\low_r\\n_5\\0.2000r_0.2000_k_0001.8000_n_000005_l_0000000009_p_00.9000_DegreeVariance_0000.2400.gml"
 
     # RandomGraphs.repeat_experiment()
     G = Network.networkx_create_from_gml(
         # path="d:\\temp\\netlogo-diffusion2.gml"
         # path="d:\\temp\\netlogo-diffusion.gml"
-        path="D:\\temp\\low_r\\n_15\\0.1330r_0.1330_k_0006.4000_n_000015_l_0000000096_p_00.9000_DegreeVariance_0001.2267.gml"
+        # path="D:\\temp\\low_r\\n_15\\0.1330r_0.1330_k_0006.4000_n_000015_l_0000000096_p_00.9000_DegreeVariance_0001.2267.gml"
         # path="D:\\SoftwareProject\\complex_networks_tools\\data\\Neural Network\\celegansneural.gml"
+        path="D:\\temp\\low_r\\n_5\\0.2000r_0.2000_k_0001.8000_n_000005_l_0000000009_p_00.9000_DegreeVariance_0000.2400.gml"
         # path="D:\\temp\\random_graph\\n_11\\r_0.0000_k_0004.1818_n_000011_l_0000000046_p_00.8000_DegreeVariance_0001.6860.gml"
     )
     # GeneralTools.identify_node_types(networkx_digraph=G, debug=True, draw_graphs=True, show_plots=False, network_id=1)
-    RandomGraphs.experiment_switch_link_direction(G)
+
+    RandomGraphs.experiment_switch_link_direction(
+        G, "0.2000r_0.2000_k_0001.8000_n_000005_l_0000000009_p_00.9000_DegreeVariance_0000.2400")
+
     # RandomGraphs.load_undirected_convert_to_directed()
     # GeneralTools.gml_stats()
     # GeneralTools.copy_graphs_with_respecting_to_redundant_percentage()
 
     # GeneralTools.copy_graphs_with_respecting_to_redundant_percentage(
-    #     from_path="D:\\Temp\\random_graph\\n_15",
-    #     to_path="D:\\Temp\\low_r\\n_15"
+    #     from_path="D:\\Temp\\random_graph\\n_11",
+    #     to_path="D:\\Temp\\low_r\\n_11"
     # )
 
     # load_network_from_text(path="d:\\temp\\g.txt")

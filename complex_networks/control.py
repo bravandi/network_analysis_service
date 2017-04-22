@@ -246,7 +246,7 @@ class Control:
         if self.network.experiment.draw_graphs:
             tools.snap_draw(
                 self.network.graph,
-                "%s/%d/graph.png" % (constants.path_draw_graphs, self.network.network_id),
+                "%s/%s/graph" % (constants.path_draw_graphs, self.network.experiment.root_folder_work),
                 "Given Graph")
 
         # identify critical control nodes
@@ -264,7 +264,7 @@ class Control:
         if self.network.experiment.draw_graphs:
             tools.snap_draw(
                 b_graph,
-                "%s/%d/b_graph_maxflow.png" % (constants.path_draw_graphs, self.network.network_id),
+                "%s/%s/b_graph_maxflow" % (constants.path_draw_graphs, self.network.experiment.root_folder_work),
                 "max flow")
         # ;;;;;;;;;;;;;;;;;;;;;;;; save bipartite representation ;;;;;;;;;;;;;;;;;;;;
         b_graph.DelNode(source_node)
@@ -307,7 +307,7 @@ class Control:
         # if self.network.experiment.debug:
         #     tools.snap_draw(
         #         maximum_matching_graph.graph,
-        #         tools.relative_path("/temp/work/draw/maximum_matching_graph.png"),
+        #         tools.relative_path("/temp/work/draw/maximum_matching_graph.jpg"),
         #         "maximum_matching_graph")
 
         n = self.network.graph.GetNodes()
@@ -446,9 +446,9 @@ class Control:
         # if self.network.experiment.draw_graphs:
         #     tools.snap_draw(
         #         bipartite_representation_tungraph,
-        #         tools.relative_path("/temp/work/draw/bipartite_representation_tungraph.png"),
+        #         tools.relative_path("/temp/work/draw/bipartite_representation_tungraph.jpg"),
         #         "bipartite_representation_tungraph")
-        # tools.snap_draw(bipartite_representation_tungraph, "d:\\wtf.png")
+        # tools.snap_draw(bipartite_representation_tungraph, "d:\\wtf.jpg")
 
         # contains matched links
         maximum_matching_tungraph = self.snap_load_maximum_matching_cnetwork().graph
@@ -578,58 +578,131 @@ class Control:
         return critical_nodes, intermittent_nodes, redundant_nodes
 
     def get_path_critical_control_nodes(self):
-        return os.path.abspath(
-            "%s%i_critical_control_nodes.txt" % (
-                constants.path_bipartite_representations, self.network.network_id)
+        path = os.path.abspath(
+            "%s\\%s\\critical_control_nodes.txt" % (
+                constants.path_bipartite_representations, self.network.experiment.root_folder_work,
+            )
         )
+
+        tools.create_path_if_not_exists(path)
+
+        return path
 
     def get_path_redundant_control_nodes(self):
-        return os.path.abspath(
-            "%s%i_redundant_never_control_nodes.txt" % (
-                constants.path_bipartite_representations, self.network.network_id)
+        # return os.path.abspath(
+        #     "%s%i_redundant_never_control_nodes.txt" % (
+        #         constants.path_bipartite_representations, self.network.network_id)
+        # )
+
+        path = os.path.abspath(
+            "%s\\%s\\redundant_never_control_nodes.txt" % (
+                constants.path_bipartite_representations, self.network.experiment.root_folder_work
+            )
         )
+
+        tools.create_path_if_not_exists(path)
+        return path
 
     def get_path_intermittent_control_nodes(self):
-        return os.path.abspath(
-            "%s%i_intermittent_control_nodes.txt" % (
-                constants.path_bipartite_representations, self.network.network_id)
+        # return os.path.abspath(
+        #     "%s%i_intermittent_control_nodes.txt" % (
+        #         constants.path_bipartite_representations, self.network.network_id)
+        # )
+
+        path = os.path.abspath(
+            "%s\\%s\\intermittent_control_nodes.txt" % (
+                constants.path_bipartite_representations, self.network.experiment.root_folder_work
+            )
         )
+
+        tools.create_path_if_not_exists(path)
+        return path
 
     def get_path_control_augmenting_path_identify_redundant(self):
-        return os.path.abspath(
-            "%s%i_control_augmenting_path_identify_redundant.txt" % (
-                constants.path_bipartite_representations, self.network.network_id)
+        # return os.path.abspath(
+        #     "%s%i_control_augmenting_path_identify_redundant.txt" % (
+        #         constants.path_bipartite_representations, self.network.network_id)
+        # )
+
+        path = os.path.abspath(
+            "%s\\%s\\control_augmenting_path_identify_redundant.txt" % (
+                constants.path_bipartite_representations, self.network.experiment.root_folder_work
+            )
         )
+
+        tools.create_path_if_not_exists(path)
+        return path
 
     def get_path_control_unmatched_nodes_inset(self):
-        return os.path.abspath(
-            "%s%i_control_inset_unmatched_nodes.txt" % (
-                constants.path_bipartite_representations, self.network.network_id)
+        # return os.path.abspath(
+        #     "%s%i_control_inset_unmatched_nodes.txt" % (
+        #         constants.path_bipartite_representations, self.network.network_id)
+        # )
+
+        path = os.path.abspath(
+            "%s\\%s\\control_inset_unmatched_nodes.txt" % (
+                constants.path_bipartite_representations, self.network.experiment.root_folder_work
+            )
         )
+        tools.create_path_if_not_exists(path)
+        return path
 
     def get_path_matched_nodes_inset(self):
-        return os.path.abspath(
-            "%s%i_matched_nodes_inset.txt" % (constants.path_bipartite_representations, self.network.network_id)
+        # return os.path.abspath(
+        #     "%s%i_matched_nodes_inset.txt" % (constants.path_bipartite_representations, self.network.network_id)
+        # )
+        path = os.path.abspath(
+            "%s\\%s\\matched_nodes_inset.txt" % (
+                constants.path_bipartite_representations, self.network.experiment.root_folder_work
+            )
         )
 
+        tools.create_path_if_not_exists(path)
+        return path
+
     def get_path_maximum_matching_graph(self):
-        return os.path.abspath(
-            "%s%i_matching.txt" % (constants.path_bipartite_representations, self.network.network_id)
+        # return os.path.abspath(
+        #     "%s%i_matching.txt" % (constants.path_bipartite_representations, self.network.network_id)
+        # )
+
+        path = os.path.abspath(
+            "%s\\%s\\matching.txt" % (
+                constants.path_bipartite_representations, self.network.experiment.root_folder_work
+            )
         )
+
+        tools.create_path_if_not_exists(path)
+        return path
 
     def get_path_bipartite_representation_reduced_max_flow_graph(self):
 
-        return os.path.abspath(
-            "%s%i_bipartite_representation_reduced_max_flow.txt" % (
-                constants.path_bipartite_representations, self.network.network_id)
+        # return os.path.abspath(
+        #     "%s%i_bipartite_representation_reduced_max_flow.txt" % (
+        #         constants.path_bipartite_representations, self.network.network_id)
+        # )
+
+        path = os.path.abspath(
+            "%s\\%s\\bipartite_representation_reduced_max_flow.txt" % (
+                constants.path_bipartite_representations, self.network.experiment.root_folder_work
+            )
         )
+        tools.create_path_if_not_exists(path)
+        return path
 
     def get_path_bipartite_representation_graph(self):
 
-        return os.path.abspath(
-            "%s%i_bipartite_representation.txt" % (
-                constants.path_bipartite_representations, self.network.network_id)
+        # return os.path.abspath(
+        #     "%s%i_bipartite_representation.txt" % (
+        #         constants.path_bipartite_representations, self.network.network_id)
+        # )
+
+        path = os.path.abspath(
+            "%s\\%s\\bipartite_representation.txt" % (
+                constants.path_bipartite_representations, self.network.experiment.root_folder_work
+            )
         )
+        tools.create_path_if_not_exists(path)
+        return path
 
     @staticmethod
     def percentage_control_forough(matrix, n, driver_nodes):

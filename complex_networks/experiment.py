@@ -8,7 +8,7 @@ import tools as tools
 
 
 class Experiment:
-    def __init__(self, db_experiment_id=None, debug=False, draw_graphs=False):
+    def __init__(self, root_folder_work='', db_experiment_id=None, debug=False, draw_graphs=False):
         """
 
         :param db_experiment_id: not used yet maybe in future
@@ -24,6 +24,8 @@ class Experiment:
 
         self.debug = debug
         self.draw_graphs = draw_graphs
+
+        self.root_folder_work = root_folder_work
 
     def networkx_to_snap_cnetwork(self, networkx, name, network_id, model=constants.NetworkModel.real_network()):
 
@@ -133,7 +135,9 @@ class Experiment:
 
                 tools.snap_draw(
                     snap_graph,
-                    "%s/%s/%s.png" % (constants.path_draw_graphs, network_id, path_parts[len(path_parts) - 1]),
+                    "%s/%s/%s" % (
+                        constants.path_draw_graphs, self.root_folder_work, path_parts[len(path_parts) - 1]
+                    ),
                     path_parts[len(path_parts) - 1])
         else:
             if directed is True:
