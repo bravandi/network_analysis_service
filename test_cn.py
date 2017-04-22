@@ -16,7 +16,7 @@ import math
 import os
 from os import walk
 from shutil import copyfile
-
+import operator
 from complex_networks.tools import networkx_draw
 
 
@@ -137,7 +137,7 @@ def load_network_from_text(path):
     # print("out var: {} in var: {}".format(str(np.var(G.out_degree().values())), np.var(G.in_degree().values())))
 
     unmatched_nodes_inset, mds = network_cn.control.snap_find_mds_minimum_driver_node_set()
-    redundant_nodes, intermittent_nodes, critical_nodes = \
+    redundant_nodes, intermittent_nodes, critical_nodes, augmenting_path_list, other_output = \
         network_cn.control.snap_find_redundant_intermittent_critical_nodes()
 
     netx = ex.snap_to_networkx_cnetwork(snap_g=network_cn.graph, name=network_cn.name, network_id=network_cn.network_id)
@@ -295,7 +295,7 @@ class ScaleFree:
                                                       model=constants.NetworkModel.real_network())
 
             unmatched_nodes_inset, mds = network_cn.control.snap_find_mds_minimum_driver_node_set()
-            redundant_nodes, intermittent_nodes, critical_nodes = \
+            redundant_nodes, intermittent_nodes, critical_nodes, augmenting_path_list, other_output = \
                 network_cn.control.snap_find_redundant_intermittent_critical_nodes()
 
             print ("@@redundant nodes ratio: {} <k>: {} time took to process: {} seconds".format(
@@ -485,7 +485,7 @@ class ScaleFree:
                                                       model=constants.NetworkModel.real_network())
 
             unmatched_nodes_inset, mds = network_cn.control.snap_find_mds_minimum_driver_node_set()
-            redundant_nodes, intermittent_nodes, critical_nodes = \
+            redundant_nodes, intermittent_nodes, critical_nodes, augmenting_path_list, other_output = \
                 network_cn.control.snap_find_redundant_intermittent_critical_nodes()
 
             print ("@@redundant nodes ratio: {} <k>: {} time took to process: {} seconds".format(
@@ -498,7 +498,7 @@ class ScaleFree:
 
 class GeneralTools:
     @staticmethod
-    def get_percentage_redundant_nodes(
+    def identify_node_types(
             networkx_digraph, debug=False, draw_graphs=False, show_plots=False,
             network_id=1):
         ex = Experiment(debug=debug, draw_graphs=draw_graphs)
@@ -518,8 +518,10 @@ class GeneralTools:
         network_cn = ex.networkx_to_snap_cnetwork(networkx=networkx_digraph, name="", network_id=network_id,
                                                   model=constants.NetworkModel.real_network())
 
+        # TODO CREATE A WAY TO CUSTOMIZE SAVE LOCATION NOT JUST BASED ON NETWORK ID
         unmatched_nodes_inset, mds = network_cn.control.snap_find_mds_minimum_driver_node_set()
-        redundant_nodes, intermittent_nodes, critical_nodes = \
+
+        redundant_nodes, intermittent_nodes, critical_nodes, augmenting_path_list, other_output = \
             network_cn.control.snap_find_redundant_intermittent_critical_nodes()
 
         perc_r = round(float(len(redundant_nodes)) / len(networkx_digraph.nodes()), 3)
@@ -531,12 +533,80 @@ class GeneralTools:
             tools.get_time_difference_seconds(start_time_2)
         ))
 
-        return perc_r, redundant_nodes, intermittent_nodes, critical_nodes, mds
+        other_output['experiment'] = ex
+        other_output['network_cn'] = network_cn
+        other_output['augmenting_path_list'] = augmenting_path_list
+
+        if draw_graphs is True:
+            GeneralTools.draw_bipartite_rep_graph(
+                ex=ex, snap_graph=other_output['bipartite_representation_tungraph'], graph_type='undirected',
+                file_name="bipartite_red_colored", network_cn=network_cn, augmenting_path_list=augmenting_path_list)
+
+        return perc_r, redundant_nodes, intermittent_nodes, critical_nodes, mds, other_output
 
     @staticmethod
-    def copy_graphs_with_respecting_to_redundant_percentage():
-        from_path = "D:\\Temp\\random_graph\\n_200"
-        to_path = "D:\\Temp\\low_r\\n_200"
+    def draw_bipartite_rep_graph(ex, network_cn, augmenting_path_list, file_name, graph_type='undirected',
+                                 on_before_draw=None, networkx_graph=None, snap_graph=None):
+
+        if snap_graph is not None:
+            networkx_graph = ex.snap_to_networkx_cnetwork(
+                snap_g=snap_graph, name=network_cn.name,
+                network_id=network_cn.network_id, model=network_cn.model, graph_type=graph_type).graph
+
+        # for augmenting_p in augmenting_path_list:
+        #     prev_node = -1
+        #     color = colors.next()
+        #     for node_id in augmenting_p:
+        #         if prev_node > -1:
+        #             if network_x_bip_rep.graph.has_edge(prev_node, node_id) is False:
+        #                 raise Exception("edge does not exists {} - {}".format(prev_node, node_id))
+        #             network_x_bip_rep.graph.add_edge(prev_node, node_id, color=color)
+        #             prev_node = node_id
+        #         else:
+        #             prev_node = node_id
+
+        # tools.networkx_draw(
+        #     G=networkx_graph,
+        #     path="%s/%s/%s.png" % (constants.path_draw_graphs, network_cn.network_id, "bipartite_rep_multi_edge"))
+
+        # network_x_bip_rep = network_cn.experiment.snap_to_networkx_cnetwork(
+        #     snap_g=snap_graph, name=network_cn.name,
+        #     network_id=network_cn.network_id, model=network_cn.model, graph_type='undirected')
+
+        colors = None
+        is_multi_graph = False
+        if "multi" in graph_type:
+            colors = tools.color_generator(len(augmenting_path_list))
+            is_multi_graph = True
+
+        color = 'red'
+
+        for augmenting_p in augmenting_path_list:
+            prev_node = -1
+
+            if is_multi_graph:
+                color = colors.next()
+
+            for node_id in augmenting_p:
+                if prev_node > -1:
+                    if networkx_graph.has_edge(prev_node, node_id) is False:
+                        raise Exception("edge does not exists {} - {}".format(prev_node, node_id))
+                    networkx_graph.add_edge(prev_node, node_id, color=color)
+                    prev_node = node_id
+                else:
+                    prev_node = node_id
+
+        if on_before_draw is not None:
+            on_before_draw(networkx_graph)
+
+        tools.networkx_draw(
+            G=networkx_graph,
+            path="%s/%s/%s.png" % (constants.path_draw_graphs, network_cn.network_id, file_name))
+
+        return networkx_graph
+
+    @staticmethod
+    def copy_graphs_with_respecting_to_redundant_percentage(from_path, to_path):
 
         if not os.path.exists(to_path):
             os.makedirs(to_path)
@@ -591,10 +661,8 @@ class GeneralTools:
         )
         print G.nodes()
 
-        perc_r, redundant_nodes, intermittent_nodes, critical_nodes, mds = GeneralTools.get_percentage_redundant_nodes(
-            networkx_digraph=G,
-            draw_graphs=True
-        )
+        perc_r, redundant_nodes, intermittent_nodes, critical_nodes, mds, other_output = \
+            GeneralTools.identify_node_types(networkx_digraph=G, draw_graphs=True)
 
         mds_who = ""
         for node in mds:
@@ -630,6 +698,17 @@ class GeneralTools:
         #
         # print("")
 
+    @staticmethod
+    def gml_stats():
+        G = Network.networkx_create_from_gml(
+            path="d:\\temp\\netlogo-diffusion.gml"
+            # path="D:\\SoftwareProject\\complex_networks_tools\\data\\Neural Network\\celegansneural.gml"
+        )
+        G2 = G.to_undirected()
+
+        print(nx.clustering(G2))
+        pass
+
 
 class RandomGraphs:
     @staticmethod
@@ -662,7 +741,7 @@ class RandomGraphs:
         found_a_matchinf_yields_another_r_d = False
         perc_compare = []
         for j in range(0, 1):
-            perc_r = GeneralTools.get_percentage_redundant_nodes(G, show_plots=False, network_id=network_id)
+            perc_r = GeneralTools.identify_node_types(G, show_plots=False, network_id=network_id)
             if len(perc_compare) > 0 and perc_r not in perc_compare:
                 found_a_matchinf_yields_another_r_d = True
                 break
@@ -710,11 +789,140 @@ class RandomGraphs:
         print ("-------------------------------\nMin r is: {}".format(r_values))
 
     @staticmethod
+    def experiment_switch_link_direction(
+            input_networkx_graph, draw_graphs=False, network_id=None,
+            draw_bipartite_matching_for_each_node_switch=False
+    ):
+        if network_id is None:
+            network_id = GeneralTools.generate_random_network_id()
+        network_id = 501
+
+        perc_r_orig, redundant_nodes_orig, intermittent_nodes_orig, critical_nodes_orig, mds_orig, other_output_orig = \
+            GeneralTools.identify_node_types(
+                networkx_digraph=input_networkx_graph, debug=False, draw_graphs=draw_graphs, show_plots=False,
+                network_id=network_id
+            )
+
+        network_cn_orig = other_output_orig['network_cn']
+        ex_orig = other_output_orig['experiment']
+        augmenting_path_list_orig = other_output_orig['augmenting_path_list']
+
+        # network_x_bip_rep = ex.snap_to_networkx_cnetwork(
+        #     snap_g=other_output_orig['bipartite_representation_tungraph'], name=network_cn.name,
+        #     network_id=network_cn.network_id, model=network_cn.model, graph_type='undirected')
+
+        # G = network_x_bip_rep.graph
+        n = len(input_networkx_graph.nodes())
+
+        networkx_bipartite_representation_orgi = GeneralTools.draw_bipartite_rep_graph(
+            ex=ex_orig, snap_graph=other_output_orig['bipartite_representation_tungraph'], graph_type='undirected',
+            file_name='{0:04d}_Nr_{1:07.4f}_{2}'.format(0, perc_r_orig, 'bipartite_rep_colored'),
+            network_cn=network_cn_orig, augmenting_path_list=augmenting_path_list_orig)
+
+        GeneralTools.draw_bipartite_rep_graph(
+            ex=ex_orig, snap_graph=other_output_orig['bipartite_representation_tungraph'], graph_type='multigraph',
+            file_name='{0:04d}_Nr_{1:07.4f}_{2}'.format(0, perc_r_orig, 'bipartite_rep_multigraph_color'),
+            network_cn=network_cn_orig, augmenting_path_list=augmenting_path_list_orig)
+
+        edges_centrality = nx.edge_betweenness_centrality(networkx_bipartite_representation_orgi)
+        nodes_centrality = nx.betweenness_centrality(networkx_bipartite_representation_orgi)
+        # edges_cent2 = sorted(edges_cent.items(), key=operator.itemgetter(1), reverse=True)
+
+        n = len(input_networkx_graph.nodes())
+        i = 1
+
+        stats = {}
+
+        for edge in input_networkx_graph.edges():
+            # if (edge[0] == 7 and edge[1] == 21) is False:
+            #     # print ("x")
+            #     continue
+
+            # todo figure out why if dont copy it wont work right ......
+            input_networkx_graph_2 = nx.DiGraph(input_networkx_graph)
+
+            input_networkx_graph_2.remove_edge(edge[0], edge[1])
+            print ("switch {} - {} TO {} - {}".format(edge[0], edge[1], edge[1], edge[0]))
+
+            input_networkx_graph_2.add_edge(edge[1], edge[0], color='green')
+
+            perc_r, redundant_nodes, intermittent_nodes, critical_nodes, mds, other_output = \
+                GeneralTools.identify_node_types(
+                    networkx_digraph=input_networkx_graph_2, debug=False, draw_graphs=draw_graphs, show_plots=False,
+                    network_id=network_id
+                )
+            network_cn = other_output['network_cn']
+            ex = other_output['experiment']
+            augmenting_path_list = other_output['augmenting_path_list']
+
+            def on_before_draw(netx_g):
+                netx_g.add_edge(edge[0], edge[1] + (n + 1), color='blue')
+                netx_g.add_edge(edge[1], edge[0] + (n + 1), color='green')
+                pass
+
+            if draw_bipartite_matching_for_each_node_switch:
+                GeneralTools.draw_bipartite_rep_graph(
+                    ex=ex, snap_graph=other_output['bipartite_representation_tungraph'],
+                    file_name="{0:04d}_Nr_{1:07.4f}_switchedEdge_{2}-{3}_to_{3}-{2}_({4}-{5}_to_{6}-{7})".format(
+                        i, perc_r,
+                        edge[0], edge[1],
+                        edge[0], edge[1] + (n + 1),
+                        edge[1], edge[0] + (n + 1)),
+                    network_cn=network_cn, augmenting_path_list=augmenting_path_list,
+                    on_before_draw=on_before_draw
+                )
+
+            input_networkx_graph_2.add_edge(edge[0], edge[1], color='blue')
+
+            stats[(edge[0], edge[1])] = {
+                'Nr': perc_r,
+                'bipartite_edge_centrality': edges_centrality[(edge[0], edge[1] + (n + 1))],
+                'from_centrality': nodes_centrality[edge[0]],
+                'to_centrality': nodes_centrality[edge[1] + (n + 1)]
+            }
+
+            i += 1
+
+        # print (stats[(8, 10)])
+        tmp2 = []
+        other_nodes = []
+        for item, value in stats.items():
+            if value["Nr"] > 0.9:
+                tmp2.append(value)
+            else:
+                other_nodes.append(value)
+
+        def calc_cent(x, key):
+            try:
+                return ("{0} centrality mean: {1}".format(key, np.mean([nc[key] for nc in x])))
+            except Exception:
+                return None
+
+        print (calc_cent(tmp2, 'from_centrality'))
+        print (calc_cent(tmp2, 'to_centrality'))
+        print (calc_cent(tmp2, 'bipartite_edge_centrality'))
+        print (';;;;;;;;;;;;;; not significant ;;;;;;;;;;;;;')
+        print (calc_cent(other_nodes, 'from_centrality'))
+        print (calc_cent(other_nodes, 'to_centrality'))
+        print (calc_cent(other_nodes, 'bipartite_edge_centrality'))
+        print (';;;;;;;;;;;;;; All Nodes ;;;;;;;;;;;;;')
+        print (calc_cent(stats.values(), 'from_centrality'))
+        print (calc_cent(stats.values(), 'to_centrality'))
+        print (calc_cent(stats.values(), 'bipartite_edge_centrality'))
+
+        print ("closeness_centrality: {}".format(
+            nx.bipartite.closeness_centrality(networkx_bipartite_representation_orgi,
+                                              networkx_bipartite_representation_orgi.nodes())))
+        print ("latapy_clustering: {}".format(
+            nx.bipartite.latapy_clustering(networkx_bipartite_representation_orgi,
+                                           networkx_bipartite_representation_orgi.nodes())))
+
+    @staticmethod
     def repeat_experiment():
         network_id = GeneralTools.generate_random_network_id()
 
         start_n = 20
-        for i in range(0, 10):
+        for i in range(0, 1):
             RandomGraphs.experiment(network_id, n=start_n)
             start_n += 1
 
@@ -792,7 +1000,7 @@ class RandomGraphs:
                                                       model=constants.NetworkModel.real_network())
 
             unmatched_nodes_inset, mds = network_cn.control.snap_find_mds_minimum_driver_node_set()
-            redundant_nodes, intermittent_nodes, critical_nodes = \
+            redundant_nodes, intermittent_nodes, critical_nodes, augmenting_path_list, other_output = \
                 network_cn.control.snap_find_redundant_intermittent_critical_nodes()
 
             print ("redundant nodes ration: {} time took to process: {} seconds".format(
@@ -801,15 +1009,60 @@ class RandomGraphs:
             ))
             print ("------------------------------------------")
 
+    @staticmethod
+    def load_undirected_convert_to_directed():
+        #
+        G_u = Network.networkx_create_from_gml(
+            "D:\\temp\\random_graph\\n_11\\r_0.0000_k_0004.1818_n_000011_l_0000000046_p_00.8000_DegreeVariance_0001.6860.gml"
+        )
+
+        G = nx.DiGraph()
+        # for edge in G_u.edges():
+        #     G.add_edge(edge)
+        G.add_edges_from(G_u.edges())
+
+        # '';;;;;;;;;;;;;;;;;;;;;;;these are for validtion
+        # G_from_netlogo = Network.networkx_create_from_gml(
+        #     "D:\\temp\\netlogo-diffusion.gml"
+        # )
+        #
+        perc_r, redundant_nodes, intermittent_nodes, critical_nodes, mds, other_output = \
+            GeneralTools.identify_node_types(
+                networkx_digraph=G, debug=False, draw_graphs=False, show_plots=False, network_id=21
+            )
+        #
+        # a = set()
+        # b = set()
+        # for i in G.edges():
+        #     a.add(i)
+        # for i in G_from_netlogo.edges():
+        #     b.add(i)
+
+        return G
+
 
 if __name__ == '__main__':
     start_time = datetime.now()
     print ("started: " + str(start_time) + "\n;;;;;;;;;;;;;;")
 
     # RandomGraphs.repeat_experiment()
-
-    GeneralTools.networkx_gml_test()
+    G = Network.networkx_create_from_gml(
+        # path="d:\\temp\\netlogo-diffusion2.gml"
+        # path="d:\\temp\\netlogo-diffusion.gml"
+        path="D:\\temp\\low_r\\n_15\\0.1330r_0.1330_k_0006.4000_n_000015_l_0000000096_p_00.9000_DegreeVariance_0001.2267.gml"
+        # path="D:\\SoftwareProject\\complex_networks_tools\\data\\Neural Network\\celegansneural.gml"
+        # path="D:\\temp\\random_graph\\n_11\\r_0.0000_k_0004.1818_n_000011_l_0000000046_p_00.8000_DegreeVariance_0001.6860.gml"
+    )
+    # GeneralTools.identify_node_types(networkx_digraph=G, debug=True, draw_graphs=True, show_plots=False, network_id=1)
+    RandomGraphs.experiment_switch_link_direction(G)
+    # RandomGraphs.load_undirected_convert_to_directed()
+    # GeneralTools.gml_stats()
     # GeneralTools.copy_graphs_with_respecting_to_redundant_percentage()
+
+    # GeneralTools.copy_graphs_with_respecting_to_redundant_percentage(
+    #     from_path="D:\\Temp\\random_graph\\n_15",
+    #     to_path="D:\\Temp\\low_r\\n_15"
+    # )
 
     # load_network_from_text(path="d:\\temp\\g.txt")
 
@@ -819,11 +1072,6 @@ if __name__ == '__main__':
     # experiment_scale_free_from_bimodal_paper(show_plots=False)
 
     # nx.write_gml(G, "d:\\temp\\test2.gml")
-
-    # # tools.networkx_draw(G, "d:\\temp\\scale_free_bimodal.png")
-    # wtf()
-
-    # bfs()
 
     ############# These two lines complement each other
     # find_control_nodes()

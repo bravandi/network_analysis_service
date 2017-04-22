@@ -448,7 +448,7 @@ class Control:
         #         bipartite_representation_tungraph,
         #         tools.relative_path("/temp/work/draw/bipartite_representation_tungraph.png"),
         #         "bipartite_representation_tungraph")
-            # tools.snap_draw(bipartite_representation_tungraph, "d:\\wtf.png")
+        # tools.snap_draw(bipartite_representation_tungraph, "d:\\wtf.png")
 
         # contains matched links
         maximum_matching_tungraph = self.snap_load_maximum_matching_cnetwork().graph
@@ -461,6 +461,8 @@ class Control:
         redundant_nodes = []  # snap.TIntV()
         # critical_nodes = snap.TIntV()
         intermittent_nodes = list(set([u[1] for u in unmatched_nodes]) - critical_nodes)  # snap.TIntV()
+
+        augmenting_path_list = []
 
         for matched_node in matched_nodes_inset:
             matched_node_id = matched_node[0]  # [0] is the inset assigned id, [1] original graph node id
@@ -479,6 +481,9 @@ class Control:
                 return_path_to_unmatched_node=True
                 # matched_edges=[(e.GetSrcNId(), e.GetDstNId()) for e in maximum_matching_tungraph.Edges()]
             )
+
+            if augmenting_path is not None and len(augmenting_path) > 0:
+                augmenting_path_list.append(augmenting_path)
 
             if is_path_to_unmatched_node_exists:
                 intermittent_nodes.append(matched_node[1])
@@ -514,13 +519,23 @@ class Control:
         #     str(list(critical_nodes))
         # ))
 
+        # ;;;;;;;;;;;;;;;;;; draw bipartite representation ;;;;;;;;;;;;;;;;;;;
+
+        other_output = {}
+
+        other_output['bipartite_representation_tungraph'] = bipartite_representation_tungraph
+        # ;;;;;;;;;;;;;;;;;; end draw graph ;;;;;;;;;;;;;;
+
+        with open(self.get_path_control_augmenting_path_identify_redundant(), 'w') as writefile:
+            json.dump(augmenting_path_list, writefile)
+
         with open(self.get_path_intermittent_control_nodes(), 'w') as writefile:
             json.dump(intermittent_nodes, writefile)
 
         with open(self.get_path_redundant_control_nodes(), 'w') as writefile:
             json.dump(redundant_nodes, writefile)
 
-        return redundant_nodes, intermittent_nodes, critical_nodes
+        return redundant_nodes, intermittent_nodes, critical_nodes, augmenting_path_list, other_output
 
     def load_inset_matched_and_control_nodes(self):
         # control nodes are unmatched nodes in the inset
@@ -577,6 +592,12 @@ class Control:
     def get_path_intermittent_control_nodes(self):
         return os.path.abspath(
             "%s%i_intermittent_control_nodes.txt" % (
+                constants.path_bipartite_representations, self.network.network_id)
+        )
+
+    def get_path_control_augmenting_path_identify_redundant(self):
+        return os.path.abspath(
+            "%s%i_control_augmenting_path_identify_redundant.txt" % (
                 constants.path_bipartite_representations, self.network.network_id)
         )
 

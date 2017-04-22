@@ -6,6 +6,25 @@ import networkx as nx
 import snap
 import constants
 from Tkinter import Tk
+import pylab
+import matplotlib
+
+
+def color_generator(NUM_COLORS=22):
+    cm = pylab.get_cmap('gist_rainbow')
+    # cmap = pylab.get_cmap('seismic', 5)
+    #
+    # for i in range(cmap.N):
+    #     rgb = cmap(i)[:3]  # will return rgba, we take only first 3 so we get rgb
+    #     print(matplotlib.colors.rgb2hex(rgb))
+
+
+    # or if you really want a generator:
+    cm = pylab.get_cmap('gist_rainbow')
+    cgen = (
+        matplotlib.colors.rgb2hex(cm(1. * i / NUM_COLORS)) for i in range(NUM_COLORS))
+
+    return cgen
 
 
 def relative_path(path):
@@ -17,6 +36,16 @@ def relative_path(path):
 
 def networkx_draw(G, path):
     pos = nx.nx_pydot.graphviz_layout(G)
+
+    if not os.path.exists(os.path.dirname(path + '.dot')):
+        os.makedirs(os.path.dirname(path + '.dot'))
+
+    G.graph['graph'] = {
+        'splines': True,
+        'ranksep': 3,
+        'nodesep': 0.8,
+        '#ratio': 1
+    }
 
     nx.nx_pydot.write_dot(G, path + '.dot')
 
@@ -203,5 +232,3 @@ if __name__ == '__main__':
 
 
     pass
-
-

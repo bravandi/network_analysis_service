@@ -57,7 +57,10 @@ class Experiment:
 
         return q
 
-    def snap_to_networkx_cnetwork(self, snap_g, name, network_id, model=constants.NetworkModel.real_network()):
+    def snap_to_networkx_cnetwork(self, snap_g, name, network_id, model=constants.NetworkModel.real_network(),
+                                  graph_type='directed'):
+
+        graph_type = graph_type.lower()
 
         is_directed = False
         if isinstance(snap_g, snap.PNGraph):
@@ -71,12 +74,18 @@ class Experiment:
             directed=is_directed
         )
 
-        if is_directed is True:
+        if graph_type == 'directed':
             # snap_graph = snap.PNGraph.New(len(networkx.nodes()), len(networkx.edges()))
             networkx_g = nx.DiGraph()
-        else:
+        elif graph_type == 'undirected':
             # snap_graph = snap.PUNGraph.New(len(networkx.nodes()), len(networkx.edges()))
             networkx_g = nx.Graph()
+        elif graph_type == 'multigraph':
+            networkx_g = nx.MultiGraph()
+        elif graph_type == 'multidigraph':
+            networkx_g = nx.MultiGraph()
+        else:
+            raise Exception('graph type {} is not defined.'.format(graph_type))
 
         q.graph = networkx_g
 
@@ -114,6 +123,14 @@ class Experiment:
             if self.draw_graphs:
                 tmp = graph_path.replace('\\', '/')
                 path_parts = tmp.split('/')
+
+                # network_x_bip_rep = self.snap_to_networkx_cnetwork(
+                #     snap_g=snap_graph, name=q.name, network_id=q.network_id, model=q.model)
+                #
+                # tools.networkx_draw(
+                #     G=network_x_bip_rep.graph,
+                #     path="%s/%s/%s.png" % (constants.path_draw_graphs, network_id, path_parts[len(path_parts) - 1]))
+
                 tools.snap_draw(
                     snap_graph,
                     "%s/%s/%s.png" % (constants.path_draw_graphs, network_id, path_parts[len(path_parts) - 1]),
