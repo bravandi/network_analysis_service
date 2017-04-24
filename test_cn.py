@@ -503,7 +503,7 @@ class GeneralTools:
     @staticmethod
     def identify_node_types(
             networkx_digraph, root_folder_work, debug=False, draw_graphs=False, show_plots=False,
-            network_id=1):
+            network_id=1, draw_label_prefix=''):
         ex = Experiment(debug=debug, draw_graphs=draw_graphs, root_folder_work=root_folder_work)
         start_time_2 = datetime.now()
 
@@ -522,7 +522,9 @@ class GeneralTools:
                                                   model=constants.NetworkModel.real_network())
 
         # TODO CREATE A WAY TO CUSTOMIZE SAVE LOCATION NOT JUST BASED ON NETWORK ID
-        unmatched_nodes_inset, mds = network_cn.control.snap_find_mds_minimum_driver_node_set()
+        unmatched_nodes_inset, mds = network_cn.control.snap_find_mds_minimum_driver_node_set(
+            draw_label=draw_label_prefix
+        )
         unmatched_nodes = [unmatched_node[1] for unmatched_node in unmatched_nodes_inset]
 
         redundant_nodes, intermittent_nodes, critical_nodes, augmenting_path_list, other_output = \
@@ -574,7 +576,7 @@ class GeneralTools:
         if graph_type == 'multigraph' and type(networkx_graph) != nx.MultiGraph:
             networkx_multi_graph = nx.MultiGraph()
             networkx_multi_graph.add_nodes_from(networkx_graph.nodes())
-            networkx_multi_graph.add_edges_from(networkx_graph.edges(), style="dashed")
+            networkx_multi_graph.add_edges_from(networkx_graph.edges(), style="bold")
             del networkx_graph
             networkx_graph = networkx_multi_graph
             # for edge in networkx_graph.edges():
@@ -616,16 +618,16 @@ class GeneralTools:
                 networkx_graph.add_node(node)
 
             if node > n:
-                positions[node] = "{},0!".format((node - (n + 1)) * 1.5)
+                positions[node] = "{},0!".format((node - (n + 1)) * 2)
             else:
-                positions[node] = "{},4!".format(node * 1.5)
+                positions[node] = "{},4!".format(node * 2)
                 pass
 
         return tools.networkx_draw(
             G=networkx_graph,
             # path="%s/%s/%s.jpg" % (constants.path_draw_graphs, network_cn.network_id, file_name)
             path="%s/%s/%s.jpg" % (constants.path_draw_graphs, ex.root_folder_work, file_name),
-            label="{}\n{}".format(label_draw, str(augmenting_path_list).replace('], [', ']\n[')),
+            label="{}\nAugmenting Path: {}".format(label_draw, str(augmenting_path_list).replace('], [', ']\n[')),
             positions=positions
         )
 
@@ -842,7 +844,7 @@ class RandomGraphs:
         perc_r_orig, redundant_nodes_orig, intermittent_nodes_orig, critical_nodes_orig, mds_orig, other_output_orig = \
             GeneralTools.identify_node_types(
                 networkx_digraph=input_networkx_graph, debug=False, draw_graphs=draw_graphs, show_plots=False,
-                network_id=network_id, root_folder_work=root_folder_work
+                network_id=network_id, root_folder_work=root_folder_work, draw_label_prefix="INPUT-GRAPH."
             )
 
         network_cn_orig = other_output_orig['network_cn']
@@ -868,12 +870,22 @@ class RandomGraphs:
         }
 
         if draw_bipartite_matching_for_each_link_switch:
-            label = "Unmatched: {} Matched: {} Do -/+{} to get outset/inset\nRedundant:{} Intermittent: {} Critical: {}".format(
+            label = "Do -/+{2} to get outset/inset. Unmatched({6}): {0}\nMatched({7}): {1} \nRedundant({8}):{3} Intermittent({9}): {4} Critical({10}): {5}".format(
                 ["{}|{}".format(node, node + n + 1) for node in mds_orig],
                 ["{}|{}".format(node, node + n + 1) for node in
                  set(input_networkx_graph.nodes()) - set(other_output_orig['unmatched_nodes'])],
-                n + 1, redundant_nodes_orig, intermittent_nodes_orig, critical_nodes_orig
+                n + 1, redundant_nodes_orig, intermittent_nodes_orig, critical_nodes_orig,
+                len(mds_orig), len(input_networkx_graph.nodes()) - len(mds_orig), len(redundant_nodes_orig),
+                len(intermittent_nodes_orig),
+                len(critical_nodes_orig)
             )
+
+            # label = "Unmatched: {0} Matched: {1} Do -/+{2} to get outset/inset\nRedundant:{3} Intermittent: {4} Critical: {5}".format(
+            #     ["{}|{}".format(node, node + n + 1) for node in mds_orig],
+            #     ["{}|{}".format(node, node + n + 1) for node in
+            #      set(input_networkx_graph.nodes()) - set(other_output_orig['unmatched_nodes'])],
+            #     n + 1, redundant_nodes_orig, intermittent_nodes_orig, critical_nodes_orig
+            # )
 
             # GeneralTools.draw_bipartite_rep_graph(
             #     ex=ex_orig,
@@ -901,6 +913,7 @@ class RandomGraphs:
             networkx_bipartite_representation_orgi.nodes())
 
         n = len(input_networkx_graph.nodes())
+        in_set_cutoff = max(input_networkx_graph.nodes())
         i = 1
 
         stats = {}
@@ -922,7 +935,8 @@ class RandomGraphs:
                 GeneralTools.identify_node_types(
                     networkx_digraph=input_networkx_graph_2, debug=False, draw_graphs=draw_graphs,
                     show_plots=False, network_id=network_id,
-                    root_folder_work="{}\\{}-{}".format(root_folder_work, edge[0], edge[1])
+                    root_folder_work="{}\\{}-{}".format(root_folder_work, edge[0], edge[1]),
+                    draw_label_prefix="SWITCHED LINK."
                 )
             network_cn = other_output['network_cn']
             ex = other_output['experiment']
@@ -931,21 +945,24 @@ class RandomGraphs:
             if draw_bipartite_matching_for_each_link_switch:
                 def on_before_draw(netx_g):
                     # netx_g.add_edge(edge[0], edge[1] + (n + 1), style='bold')
-                    # the key 0 is the default key so it makes the first edge dashed
+                    # the key 0 is the default key so it makes the first edge bold
                     for edge_g in netx_g.edges():
-                        netx_g.add_edge(edge_g[0], edge_g[1], 0, style='dashed')
+                        netx_g.add_edge(edge_g[0], edge_g[1], 0, style='bold')
 
-                    netx_g.add_edge(edge[1], edge[0] + (n + 1), 0, style='bold')
+                    netx_g.add_edge(edge[1], edge[0] + (n + 1), 0, style='dashed')
 
                 root_folder_work_before_change = ex.root_folder_work
                 # ex.root_folder_work = ex.root_folder_work.split('\\')[0] + "\\switched_links"
                 ex.root_folder_work = tools.path_split(ex.root_folder_work, 0)[1] + "\\switched_links"
 
-                label = "Unmatched: {} Matched: {} Do -/+{} to get outset/inset\nRedundant:{} Intermittent: {} Critical: {}".format(
+                label = "Do -/+{2} to get outset/inset. Unmatched({6}): {0}\nMatched({7}): {1} \nRedundant({8}):{3} Intermittent({9}): {4} Critical({10}): {5}".format(
                     ["{}|{}".format(node, node + n + 1) for node in mds],
                     ["{}|{}".format(node, node + n + 1) for node in
                      set(input_networkx_graph_2.nodes()) - set(other_output['unmatched_nodes'])],
-                    n + 1, redundant_nodes, intermittent_nodes, critical_nodes
+                    n + 1, redundant_nodes, intermittent_nodes, critical_nodes,
+                    len(mds), len(input_networkx_graph_2.nodes()) - len(mds), len(redundant_nodes),
+                    len(intermittent_nodes),
+                    len(critical_nodes)
                 )
 
                 saved_pic_path = GeneralTools.draw_bipartite_rep_graph(
@@ -1023,14 +1040,17 @@ class RandomGraphs:
             #     s = sum([nc[key] for nc in x])
             # except Exception:
             #     return ("{0} centrality mean: {1}\n".format(key, "None"))
-            s = 0
-            for item in x:
-                try:
-                    s += item[key]
-                except Exception:
-                    pass
+            try:
+                s = 0
+                for item in x:
+                    try:
+                        s += item[key]
+                    except Exception:
+                        pass
 
-            return ("{0} centrality mean: {1}\n".format(key, s / float(len(x))))
+                return ("{0} centrality mean: {1}\n".format(key, s / float(len(x))))
+            except Exception:
+                return ("{0} centrality mean: {1}\n".format(key, "None"))
 
         def calc_overall_stats(dict_values):
             result = ""
@@ -1073,7 +1093,8 @@ class RandomGraphs:
             return result
 
         output += "\n\t(starting index {0} is the InSet. Do -{1} to get original node id. " \
-                  "\n\tThere is no node {0} in the bipartite representation of the graph):\n".format(n, n + 1)
+                  "\n\tThere is no node {0} in the bipartite representation of the graph):\n". \
+            format(in_set_cutoff, n + 1)
 
         output += "Edges Betweenness Centrality: {}\n".format(edges_betweenness_centrality_orgi)
         output += "Nodes Betweenness Centrality: {}\n".format(normalize_dictionary(nodes_betweenness_centrality_orgi,
@@ -1228,11 +1249,13 @@ class RandomGraphs:
     @staticmethod
     def experiment_switch_link_direction_controller():
         # path = "D:\\temp\\low_r\\n_5\\0.2000r_0.2000_k_0001.8000_n_000005_l_0000000009_p_00.9000_DegreeVariance_0000.2400.gml"
-        path = "D:\\temp\\low_r\\n_5\\0.0000r_0.0000_k_0001.6000_n_000005_l_0000000008_p_00.8000_DegreeVariance_0000.5600.gml"
+        path = "D:\\temp\\low_r\\n_10\\0.0000r_0.0000_k_0002.4000_n_000010_l_0000000024_p_00.6000_DegreeVariance_0001.9600.gml"
+        # path = "D:\\temp\\low_r\\n_5\\0.0000r_0.0000_k_0001.6000_n_000005_l_0000000008_p_00.8000_DegreeVariance_0000.5600.gml"
         # path = "D:\\temp\\low_r\\n_20\\0.2500r_0.2500_k_0005.8500_n_000020_l_0000000117_p_00.6000_DegreeVariance_0003.9100.gml"
         # path = "D:\\temp\\low_r\\n_5\\0.2000r_0.2000_k_0001.8000_n_000005_l_0000000009_p_00.9000_DegreeVariance_0000.2400.gml"
         # path = "D:\\temp\\random_graph\\n_10_p_0.4.gml"
         # path = "D:\\SoftwareProject\\network_analysis_service\\data\\Neural Network\\celegansneural.gml"
+        # path = 'D:\\Temp\\IMPORTANT_CAUSE ERROR\\netlogo-diffusion_n3_e4.gml'
 
         path_parts = path.split('\\')
         G = Network.networkx_create_from_gml(

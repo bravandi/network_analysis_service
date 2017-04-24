@@ -243,7 +243,7 @@ class Control:
 
         return out_set, in_set, b_graph, source_node, sink_node
 
-    def snap_find_mds_minimum_driver_node_set(self):
+    def snap_find_mds_minimum_driver_node_set(self, draw_label=''):
 
         # identify critical control nodes
         with open(self.get_path_critical_control_nodes(), 'w') as writefile:
@@ -346,7 +346,7 @@ class Control:
             tools.snap_draw(
                 self.network.graph,
                 "%s/%s/graph" % (constants.path_draw_graphs, self.network.experiment.root_folder_work),
-                "Given Graph. Nd: {0} #Matched: {1}\nMDS: {2}\nMatched: {3}".format(
+                draw_label + " Nd: {0} #Matched: {1}\nMDS: {2}\nMatched: {3}".format(
                     len(mds), len(matched_nodes_inset), mds,
                     [matched_node[1] for matched_node in matched_nodes_inset]
                 ))
@@ -494,6 +494,7 @@ class Control:
                 graph=bipartite_representation_tungraph,
                 maximum_matching_tungraph=maximum_matching_tungraph,
                 unmatched_nodes=[u[0] for u in unmatched_nodes],
+                create_bfs_tree=True,
                 return_path_to_unmatched_node=True
                 # matched_edges=[(e.GetSrcNId(), e.GetDstNId()) for e in maximum_matching_tungraph.Edges()]
             )

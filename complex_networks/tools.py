@@ -77,6 +77,14 @@ def networkx_draw(G, path, label='', positions=None):
     return path
 
 
+def snap_get_graph_nodes(snap_g):
+    return [n.GetId() for n in snap_g.Nodes()]
+
+
+def snap_get_graph_edges(snap_g):
+    return [(e.GetSrcNId(), e.GetDstNId()) for e in snap_g.Edges()]
+
+
 def create_path_if_not_exists(path):
     path = os.path.realpath(path)
     if not os.path.exists(os.path.dirname(path)):
