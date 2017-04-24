@@ -574,7 +574,7 @@ class GeneralTools:
         if graph_type == 'multigraph' and type(networkx_graph) != nx.MultiGraph:
             networkx_multi_graph = nx.MultiGraph()
             networkx_multi_graph.add_nodes_from(networkx_graph.nodes())
-            networkx_multi_graph.add_edges_from(networkx_graph.edges())
+            networkx_multi_graph.add_edges_from(networkx_graph.edges(), style="dashed")
             del networkx_graph
             networkx_graph = networkx_multi_graph
             # for edge in networkx_graph.edges():
@@ -928,16 +928,25 @@ class RandomGraphs:
             ex = other_output['experiment']
             augmenting_path_list = other_output['augmenting_path_list']
 
-            def on_before_draw(netx_g):
-                # netx_g.add_edge(edge[0], edge[1] + (n + 1), style='bold')
-                # the key 0 is the default key so it makes the first edge dashed
-                netx_g.add_edge(edge[1], edge[0] + (n + 1), 0, style='dashed')
-                pass
-
             if draw_bipartite_matching_for_each_link_switch:
+                def on_before_draw(netx_g):
+                    # netx_g.add_edge(edge[0], edge[1] + (n + 1), style='bold')
+                    # the key 0 is the default key so it makes the first edge dashed
+                    for edge_g in netx_g.edges():
+                        netx_g.add_edge(edge_g[0], edge_g[1], 0, style='dashed')
+
+                    netx_g.add_edge(edge[1], edge[0] + (n + 1), 0, style='bold')
+
                 root_folder_work_before_change = ex.root_folder_work
                 # ex.root_folder_work = ex.root_folder_work.split('\\')[0] + "\\switched_links"
                 ex.root_folder_work = tools.path_split(ex.root_folder_work, 0)[1] + "\\switched_links"
+
+                label = "Unmatched: {} Matched: {} Do -/+{} to get outset/inset\nRedundant:{} Intermittent: {} Critical: {}".format(
+                    ["{}|{}".format(node, node + n + 1) for node in mds],
+                    ["{}|{}".format(node, node + n + 1) for node in
+                     set(input_networkx_graph_2.nodes()) - set(other_output['unmatched_nodes'])],
+                    n + 1, redundant_nodes, intermittent_nodes, critical_nodes
+                )
 
                 saved_pic_path = GeneralTools.draw_bipartite_rep_graph(
                     ex=ex,
@@ -949,7 +958,7 @@ class RandomGraphs:
                         edge[1], edge[0] + (n + 1)),
                     original_graph_nodes=input_networkx_graph_2.nodes(), graph_type='multigraph',
                     network_cn=network_cn, augmenting_path_list=augmenting_path_list,
-                    on_before_draw=on_before_draw
+                    on_before_draw=on_before_draw, label_draw=label
                 )
                 # need lock here | sometime os is slow to create the file
                 while os.path.isfile(saved_pic_path) is False:
