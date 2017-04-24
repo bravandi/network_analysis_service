@@ -27,6 +27,15 @@ def color_generator(NUM_COLORS=22):
     return cgen
 
 
+def path_split(path, return_index=None):
+    spl = path.split(os.sep)
+
+    if return_index is None:
+        return spl
+
+    return (spl, spl[return_index],)
+
+
 def relative_path(path):
     if os.path.isfile(path):
         return path
@@ -44,6 +53,8 @@ def networkx_draw(G, path):
     if not os.path.exists(os.path.dirname(path + '.dot')):
         os.makedirs(os.path.dirname(path + '.dot'))
 
+    path = absolute_path(path)
+
     G.graph['graph'] = {
         'splines': True,
         'ranksep': 3,
@@ -55,6 +66,8 @@ def networkx_draw(G, path):
 
     # run_command("dot -Tpng %s > %s" % (path + '.dot', path))
     run_command("dot -Tjpg %s -o %s" % (path + '.dot', path), no_pipe=True)
+
+    return path
 
 
 def create_path_if_not_exists(path):
@@ -69,6 +82,8 @@ def snap_draw(G, path, name="graph 1"):
         os.makedirs(os.path.dirname(path))
 
     snap.DrawGViz(G, snap.gvlDot, path + ".png", name, True)
+
+    return path + ".png"
 
 
 def convert_string_datetime(input):

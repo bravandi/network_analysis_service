@@ -211,9 +211,10 @@ class Control:
         for node in self.network.graph.Nodes():
             node_id = node.GetId()
 
-            # if b_graph.IsNode(node_id):
-            #     print ([n.GetId() for n in b_graph.Nodes()])
-            #     assert True, "Why node exists already!!??"
+            if node_id == 299 or b_graph.IsNode(node_id):
+                # print ([n.GetId() for n in b_graph.Nodes()])
+                # print "yo"
+                assert True, "Why node exists already!!??"
 
             b_graph.AddNode(node_id)  # out_set (edge.GetSrcNId())
             out_set.Add(node_id)
@@ -243,12 +244,6 @@ class Control:
         return out_set, in_set, b_graph, source_node, sink_node
 
     def snap_find_mds_minimum_driver_node_set(self):
-
-        if self.network.experiment.draw_graphs:
-            tools.snap_draw(
-                self.network.graph,
-                "%s/%s/graph" % (constants.path_draw_graphs, self.network.experiment.root_folder_work),
-                "Given Graph")
 
         # identify critical control nodes
         with open(self.get_path_critical_control_nodes(), 'w') as writefile:
@@ -344,6 +339,15 @@ class Control:
                 "\n[# number of control nodes] %f | %s\n     tuples are --> (id in the bipartite representation, id in the given graph)\n" % (
                     round(len(unmatched_nodes_inset) / float(n), 3),
                     str(unmatched_nodes_inset) if len(unmatched_nodes_inset) < 100 else "too big"))
+
+        if self.network.experiment.draw_graphs:
+            tools.snap_draw(
+                self.network.graph,
+                "%s/%s/graph" % (constants.path_draw_graphs, self.network.experiment.root_folder_work),
+                "Given Graph. Nd: {0} #Matched: {1}\nMDS: {2}\nMatched: {3}".format(
+                    len(mds), len(matched_nodes_inset), mds,
+                    [matched_node[1] for matched_node in matched_nodes_inset]
+                ))
 
         return unmatched_nodes_inset, mds
 

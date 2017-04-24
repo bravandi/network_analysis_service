@@ -523,6 +523,7 @@ class GeneralTools:
 
         # TODO CREATE A WAY TO CUSTOMIZE SAVE LOCATION NOT JUST BASED ON NETWORK ID
         unmatched_nodes_inset, mds = network_cn.control.snap_find_mds_minimum_driver_node_set()
+        unmatched_nodes = [unmatched_node[1] for unmatched_node in unmatched_nodes_inset]
 
         redundant_nodes, intermittent_nodes, critical_nodes, augmenting_path_list, other_output = \
             network_cn.control.snap_find_redundant_intermittent_critical_nodes()
@@ -542,6 +543,7 @@ class GeneralTools:
         other_output['augmenting_path_list'] = augmenting_path_list
         other_output['perc_c'] = perc_c
         other_output['perc_i'] = perc_i
+        other_output['unmatched_nodes'] = unmatched_nodes
 
         if draw_graphs is True:
             GeneralTools.draw_bipartite_rep_graph(
@@ -605,13 +607,11 @@ class GeneralTools:
         if on_before_draw is not None:
             on_before_draw(networkx_graph)
 
-        tools.networkx_draw(
+        return tools.networkx_draw(
             G=networkx_graph,
             # path="%s/%s/%s.jpg" % (constants.path_draw_graphs, network_cn.network_id, file_name)
             path="%s/%s/%s.jpg" % (constants.path_draw_graphs, ex.root_folder_work, file_name)
         )
-
-        return networkx_graph
 
     @staticmethod
     def copy_graphs_with_respecting_to_redundant_percentage(from_path, to_path):
@@ -812,7 +812,7 @@ class RandomGraphs:
             input_networkx_graph, root_folder_work, draw_graphs=True, network_id=None,
             draw_bipartite_matching_for_each_link_switch=True
     ):
-        if isinstance(input_networkx_graph, nx.Graph) is True:
+        if type(input_networkx_graph) is nx.Graph:
             tmp = nx.DiGraph()
             tmp.add_nodes_from(input_networkx_graph.nodes())
             tmp.add_edges_from(input_networkx_graph.edges())
@@ -835,18 +835,47 @@ class RandomGraphs:
 
         n = len(input_networkx_graph.nodes())
 
-        networkx_bipartite_representation_orgi = GeneralTools.draw_bipartite_rep_graph(
-            ex=ex_orig, snap_graph=other_output_orig['bipartite_representation_tungraph'], graph_type='undirected',
-            file_name='{0:04d}_Nr_{1:07.4f}_{2}'.format(0, perc_r_orig, 'bipartite_rep_colored'),
-            network_cn=network_cn_orig, augmenting_path_list=augmenting_path_list_orig)
+        networkx_bipartite_representation_orgi = ex_orig.snap_to_networkx_cnetwork(
+            snap_g=other_output_orig['bipartite_representation_tungraph'], name=network_cn_orig.name,
+            network_id=network_cn_orig.network_id, model=network_cn_orig.model, graph_type='undirected').graph
+        n_bipartite_representation_orgi = len(networkx_bipartite_representation_orgi.nodes())
 
-        GeneralTools.draw_bipartite_rep_graph(
-            ex=ex_orig, snap_graph=other_output_orig['bipartite_representation_tungraph'], graph_type='multigraph',
-            file_name='{0:04d}_Nr_{1:07.4f}_{2}'.format(0, perc_r_orig, 'bipartite_rep_multigraph_color'),
-            network_cn=network_cn_orig, augmenting_path_list=augmenting_path_list_orig)
+        original_graph_control_properties = {
+            "00 Nr_perc": perc_r_orig,
+            "01 Nr": len(redundant_nodes_orig),
+            "02 Ni": len(intermittent_nodes_orig),
+            "03 Nc": len(critical_nodes_orig),
+            "04 Nd_number_unmatched": len(mds_orig),
+            "05 |M|": len(input_networkx_graph.nodes()) - len(mds_orig),
+            "06 n": n,
+            "07 #links": len(input_networkx_graph.edges())
+        }
 
-        edges_centrality_orgi = nx.edge_betweenness_centrality(networkx_bipartite_representation_orgi)
-        nodes_centrality_orgi = nx.betweenness_centrality(networkx_bipartite_representation_orgi)
+        if draw_bipartite_matching_for_each_link_switch:
+            GeneralTools.draw_bipartite_rep_graph(
+                ex=ex_orig,
+                # networkx_graph=other_output_orig['bipartite_representation_tungraph'],
+                networkx_graph=networkx_bipartite_representation_orgi,
+                graph_type='undirected',
+                file_name='{0:04d}_Nr_{1:07.4f}_{2}'.format(0, perc_r_orig, 'bipartite_rep_colored'),
+                network_cn=network_cn_orig, augmenting_path_list=augmenting_path_list_orig)
+
+            GeneralTools.draw_bipartite_rep_graph(
+                ex=ex_orig,
+                # snap_graph=other_output_orig['bipartite_representation_tungraph'],
+                networkx_graph=networkx_bipartite_representation_orgi,
+                graph_type='multigraph',
+                file_name='{0:04d}_Nr_{1:07.4f}_{2}'.format(0, perc_r_orig, 'bipartite_rep_multigraph_color'),
+                network_cn=network_cn_orig, augmenting_path_list=augmenting_path_list_orig)
+
+        edges_betweenness_centrality_orgi = nx.edge_betweenness_centrality(networkx_bipartite_representation_orgi)
+        nodes_betweenness_centrality_orgi = nx.betweenness_centrality(networkx_bipartite_representation_orgi)
+        nodes_latapy_clustering = nx.bipartite.latapy_clustering(
+            networkx_bipartite_representation_orgi,
+            networkx_bipartite_representation_orgi.nodes())
+        nodes_closeness_centrality = nx.bipartite.closeness_centrality(
+            networkx_bipartite_representation_orgi,
+            networkx_bipartite_representation_orgi.nodes())
 
         n = len(input_networkx_graph.nodes())
         i = 1
@@ -862,7 +891,7 @@ class RandomGraphs:
             input_networkx_graph_2 = nx.DiGraph(input_networkx_graph)
 
             input_networkx_graph_2.remove_edge(edge[0], edge[1])
-            print ("switch {} - {} TO {} - {}".format(edge[0], edge[1], edge[1], edge[0]))
+            print ("#{} | switch {} - {} TO {} - {}".format(i, edge[0], edge[1], edge[1], edge[0]))
 
             input_networkx_graph_2.add_edge(edge[1], edge[0], color='green')
 
@@ -882,8 +911,11 @@ class RandomGraphs:
                 pass
 
             if draw_bipartite_matching_for_each_link_switch:
-                ex.root_folder_work = ex.root_folder_work.split('\\')[0] + "\\switched_links"
-                GeneralTools.draw_bipartite_rep_graph(
+                root_folder_work_before_change = ex.root_folder_work
+                # ex.root_folder_work = ex.root_folder_work.split('\\')[0] + "\\switched_links"
+                ex.root_folder_work = tools.path_split(ex.root_folder_work, 0)[1] + "\\switched_links"
+
+                saved_pic_path = GeneralTools.draw_bipartite_rep_graph(
                     ex=ex, snap_graph=other_output['bipartite_representation_tungraph'],
                     file_name="{0:04d}_Nr_{1:07.4f}_switchedEdge_{2}-{3}_to_{3}-{2}_({4}-{5}_to_{6}-{7})".format(
                         i, perc_r,
@@ -894,56 +926,96 @@ class RandomGraphs:
                     on_before_draw=on_before_draw
                 )
 
-            input_networkx_graph_2.add_edge(edge[0], edge[1], color='blue')
+                copyfile(
+                    saved_pic_path,
+                    os.path.join(constants.path_draw_graphs, root_folder_work_before_change,
+                                 tools.path_split(saved_pic_path, -1)[1]))
+
+            # input_networkx_graph_2.add_edge(edge[0], edge[1], color='blue')
 
             # ;;;;;;;;;;;;;;;; start analyses on the bipartite representation of the input graph ;;;;;;;;;;;;;;;
 
-            input_graph_total_degree = networkx_bipartite_representation_orgi.degree()
+            bipartite_representation_orgi_total_degree = networkx_bipartite_representation_orgi.degree()
             # input_graph_in_degree = networkx_bipartite_representation_orgi.in_degree()
             # input_graph_out_degree = networkx_bipartite_representation_orgi.out_degree()
-            stats[(edge[0], edge[1])] = {
-                'Nr': perc_r,
-                'Ni': other_output['perc_i'],
-                'Nc': other_output['perc_c'],
-                'bipartite_edge_centrality': edges_centrality_orgi[(edge[0], edge[1] + (n + 1))],
-                'from_node_centrality': nodes_centrality_orgi[edge[0]],
-                'to_node_centrality': nodes_centrality_orgi[edge[1] + (n + 1)],
-                'from_node_degrees': "total: {}".format(input_graph_total_degree[edge[0]])
-            }
+            in_set_node_id = edge[1] + n + 1
+            stats["{0:07.4f} ({1}({3})->{2}({4}))".format(
+                perc_r, edge[0], edge[1], edge[0] + n + 1, in_set_node_id)] = \
+                {
+                    '00 Nr_perc': perc_r,
+                    "01 Nr": len(redundant_nodes),
+                    "02 Ni": len(intermittent_nodes),
+                    "03 Nc": len(critical_nodes),
+                    "04 Nd_number_unmatched": len(mds),
+                    # 'Ni': other_output['perc_i'],
+                    # 'Nc': other_output['perc_c'],
+                    '05 |M|': len(input_networkx_graph_2) - len(mds),
+
+                    '06 Edge Betweenness Centrality': edges_betweenness_centrality_orgi[(edge[0], in_set_node_id)],
+                    '07 From Node Betweenness Centrality': nodes_betweenness_centrality_orgi[edge[0]],
+                    '08 To Node Betweenness Centrality': nodes_betweenness_centrality_orgi[in_set_node_id],
+
+                    '09 From Node Closeness Centrality': nodes_closeness_centrality[edge[0]],
+                    '10 To Node Closeness Centrality': nodes_closeness_centrality[in_set_node_id],
+
+                    '11 From Node Latapy Clustering': nodes_latapy_clustering[edge[0]],
+                    '12 To Node Latapy Clustering': nodes_latapy_clustering[in_set_node_id],
+
+                    '13 From node degrees': "total: {}".format(bipartite_representation_orgi_total_degree[edge[0]]),
+                    '14 To node degrees': "total: {}".format(bipartite_representation_orgi_total_degree[in_set_node_id])
+                }
 
             i += 1
 
+        output = "\tOriginal graph control properties:\n{}\n" \
+                 "-----------------------------------------" \
+            .format(pprint.pformat(original_graph_control_properties))
+
         # print (stats[(8, 10)])
-        Nr_bigger_09 = []
-        other_nodes = []
-        for item, value in stats.items():
-            if value["Nr"] > 0.9:
-                Nr_bigger_09.append(value)
+        cut_of_partition = {}
+        cut_of_value = 0.7
+        other_nodes = {}
+        for item_key, value in stats.items():
+            if value["00 Nr_perc"] > 0.7:
+                cut_of_partition[item_key] = value
             else:
-                other_nodes.append(value)
+                other_nodes[item_key] = value
 
-        def calc_cent(x, key):
-            try:
-                return ("{0} centrality mean: {1}\n".format(key, np.mean([nc[key] for nc in x])))
-            except Exception:
-                return ("{0} centrality mean: {1}\n".format(key, "None"))
+        def calc_mean(x, key):
+            # try:
+            #     s = sum([nc[key] for nc in x])
+            # except Exception:
+            #     return ("{0} centrality mean: {1}\n".format(key, "None"))
+            s = 0
+            for item in x:
+                try:
+                    s += item[key]
+                except Exception:
+                    pass
 
-        output = ""
+            return ("{0} centrality mean: {1}\n".format(key, s / float(len(x))))
+
+        def calc_overall_stats(dict_values):
+            result = ""
+            result += calc_mean(dict_values.values(), '06 Edge Betweenness Centrality')
+            result += calc_mean(dict_values.values(), '07 From Node Betweenness Centrality')
+            result += calc_mean(dict_values.values(), '08 To Node Betweenness Centrality')
+            result += calc_mean(dict_values.values(), '09 From Node Closeness Centrality')
+            result += calc_mean(dict_values.values(), '10 To Node Closeness Centrality')
+            result += calc_mean(dict_values.values(), '11 From Node Latapy Clustering')
+            result += calc_mean(dict_values.values(), '12 To Node Latapy Clustering')
+            return result
+
         # edges_cent2 = sorted(edges_cent.items(), key=operator.itemgetter(1), reverse=True)
-        output += "\n\tNr > 0.9\n"
-        output += calc_cent(Nr_bigger_09, 'from_centrality')
-        output += calc_cent(Nr_bigger_09, 'to_centrality')
-        output += calc_cent(Nr_bigger_09, 'bipartite_edge_centrality')
+        output += ";;;;;;;;;;;;;;;Switch Links Analysis;;;;;;;;;;;;;;;\n\tNr > {}\n".format(cut_of_value)
+        output += calc_overall_stats(cut_of_partition)
         # print (';;;\t;;;;;;;;;;; not significant ;;;;;;;;;;;;;')
-        output += "\n\tOther nodes\n"
-        output += calc_cent(other_nodes, 'from_centrality')
-        output += calc_cent(other_nodes, 'to_centrality')
-        output += calc_cent(other_nodes, 'bipartite_edge_centrality')
+
+        output += "\n\tOther nodes Nr =< {}\n".format(cut_of_value)
+        output += calc_overall_stats(other_nodes)
         # print (';;;;;;;;;;;;;; All Nodes ;;;;;;;;;;;;;')
         output += "\n\tAll nodes together\n"
-        output += calc_cent(stats.values(), 'from_centrality')
-        output += calc_cent(stats.values(), 'to_centrality')
-        output += calc_cent(stats.values(), 'bipartite_edge_centrality')
+        output += calc_overall_stats(stats)
 
         def normalize_dictionary(dict, input_graph_n):
             result = {}
@@ -952,37 +1024,44 @@ class RandomGraphs:
                     result[index] = "InSet"
                     continue
 
+                prefix = ""
+                if index > input_graph_n:
+                    prefix = "{}|".format(index - (n + 1))
+
                 if dict.has_key(index):
-                    result[index] = "{0:05.2f}".format(round(dict[index], 3))
+                    result[index] = prefix + "{0:05.2f}".format(round(dict[index], 3))
                 else:
-                    result[index] = "NaN"
+                    result[index] = prefix + "NaN"
 
             return result
 
-        output += "\n\tCentrality (starting index {0} is the InSet. Do -{1} to get original node id. " \
+        output += "\n\t(starting index {0} is the InSet. Do -{1} to get original node id. " \
                   "\n\tThere is no node {0} in the bipartite representation of the graph):\n".format(n, n + 1)
 
-        output += "closeness_centrality: {}\n\n".format(
-            # pprint.pformat(
-            normalize_dictionary(nx.bipartite.closeness_centrality(networkx_bipartite_representation_orgi,
-                                                                   networkx_bipartite_representation_orgi.nodes()),
-                                 len(input_networkx_graph))
-            # )
-        )
-
-        output += "latapy_clustering   : {}\n".format(
-            # pprint.pformat(
-            normalize_dictionary(nx.bipartite.latapy_clustering(networkx_bipartite_representation_orgi,
-                                                                networkx_bipartite_representation_orgi.nodes()),
-                                 len(input_networkx_graph))
-            # )
-        )
+        output += "Edges Betweenness Centrality: {}\n".format(edges_betweenness_centrality_orgi)
+        output += "Nodes Betweenness Centrality: {}\n".format(normalize_dictionary(nodes_betweenness_centrality_orgi,
+                                                                                   n_bipartite_representation_orgi))
+        output += "Nodes Latapy Clustering     : {}\n".format(normalize_dictionary(nodes_latapy_clustering,
+                                                                                   n_bipartite_representation_orgi))
+        output += "Nodes Closeness Centrality  : {}\n".format(normalize_dictionary(nodes_closeness_centrality,
+                                                                                   n_bipartite_representation_orgi))
 
         output += ("\n\tstats switch link results:\n {}".format(pprint.pformat(stats)))
 
-        with open(tools.absolute_path(
-                "{}{}/output.txt".format(constants.path_draw_graphs, root_folder_work)), 'w') as writefile:
-            writefile.write(output)
+        try:
+            with open(tools.absolute_path(
+                    "{}{}/output.txt".format(constants.path_draw_graphs, root_folder_work)), 'w') as writefile:
+                writefile.write(output)
+        except Exception:
+            pass
+
+        try:
+            with open(tools.absolute_path(
+                    "{}{}/output.txt".format(constants.path_bipartite_representations, root_folder_work)),
+                    'w') as writefile:
+                writefile.write(output)
+        except Exception:
+            pass
 
         print (output)
 
@@ -1109,27 +1188,35 @@ class RandomGraphs:
 
         return G
 
+    @staticmethod
+    def experiment_switch_link_direction_controller():
+        # path = "D:\\temp\\low_r\\n_5\\0.2000r_0.2000_k_0001.8000_n_000005_l_0000000009_p_00.9000_DegreeVariance_0000.2400.gml"
+        path = "D:\\temp\\low_r\\n_5\\0.0000r_0.0000_k_0001.6000_n_000005_l_0000000008_p_00.8000_DegreeVariance_0000.5600.gml"
+        # path = "D:\\temp\\low_r\\n_20\\0.2500r_0.2500_k_0005.8500_n_000020_l_0000000117_p_00.6000_DegreeVariance_0003.9100.gml"
+        # path = "D:\\temp\\low_r\\n_5\\0.2000r_0.2000_k_0001.8000_n_000005_l_0000000009_p_00.9000_DegreeVariance_0000.2400.gml"
+        # path = "D:\\temp\\random_graph\\n_10_p_0.4.gml"
+        # path = "D:\\SoftwareProject\\network_analysis_service\\data\\Neural Network\\celegansneural.gml"
+
+        path_parts = path.split('\\')
+        G = Network.networkx_create_from_gml(
+            # path="d:\\temp\\netlogo-diffusion2.gml"
+            # path="d:\\temp\\netlogo-diffusion.gml"
+            # path="D:\\temp\\low_r\\n_15\\0.1330r_0.1330_k_0006.4000_n_000015_l_0000000096_p_00.9000_DegreeVariance_0001.2267.gml"
+            # path="D:\\SoftwareProject\\complex_networks_tools\\data\\Neural Network\\celegansneural.gml"
+            path=path
+            # path="D:\\temp\\random_graph\\n_11\\r_0.0000_k_0004.1818_n_000011_l_0000000046_p_00.8000_DegreeVariance_0001.6860.gml"
+            , label='id'
+        )
+        RandomGraphs.experiment_switch_link_direction(
+            input_networkx_graph=G, root_folder_work=path_parts[len(path_parts) - 1][:-4], draw_graphs=False,
+            network_id=None, draw_bipartite_matching_for_each_link_switch=False)
+
 
 if __name__ == '__main__':
     start_time = datetime.now()
     print ("started: " + str(start_time) + "\n;;;;;;;;;;;;;;")
 
-    # path = "D:\\temp\\low_r\\n_5\\0.2000r_0.2000_k_0001.8000_n_000005_l_0000000009_p_00.9000_DegreeVariance_0000.2400.gml"
-    # path = "D:\\temp\\low_r\\n_20\\0.2500r_0.2500_k_0005.8500_n_000020_l_0000000117_p_00.6000_DegreeVariance_0003.9100.gml"
-    path = "D:\\temp\\low_r\\n_5\\0.2000r_0.2000_k_0001.8000_n_000005_l_0000000009_p_00.9000_DegreeVariance_0000.2400.gml"
-
-    path_parts = path.split('\\')
-    G = Network.networkx_create_from_gml(
-        # path="d:\\temp\\netlogo-diffusion2.gml"
-        # path="d:\\temp\\netlogo-diffusion.gml"
-        # path="D:\\temp\\low_r\\n_15\\0.1330r_0.1330_k_0006.4000_n_000015_l_0000000096_p_00.9000_DegreeVariance_0001.2267.gml"
-        # path="D:\\SoftwareProject\\complex_networks_tools\\data\\Neural Network\\celegansneural.gml"
-        path=path
-        # path="D:\\temp\\random_graph\\n_11\\r_0.0000_k_0004.1818_n_000011_l_0000000046_p_00.8000_DegreeVariance_0001.6860.gml"
-    )
-    RandomGraphs.experiment_switch_link_direction(
-        input_networkx_graph=G, root_folder_work=path_parts[len(path_parts) - 1][:-4], draw_graphs=True,
-        network_id=None, draw_bipartite_matching_for_each_link_switch=False)
+    RandomGraphs.experiment_switch_link_direction_controller()
 
     # RandomGraphs.repeat_experiment()
 
@@ -1148,6 +1235,7 @@ if __name__ == '__main__':
     # experiment_scale_free_hidden_parameter_from_network_science_book(show_plots=True)
     # experiment_scale_free_from_bimodal_paper(show_plots=False)
 
+    # G = nx.fast_gnp_random_graph(10, 0.4, directed=True)
     # nx.write_gml(G, "d:\\temp\\test2.gml")
 
     ############# These two lines complement each other
