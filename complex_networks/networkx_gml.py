@@ -458,15 +458,22 @@ def parse_gml_lines(lines, label, destringizer):
             if not G.has_edge(source, target):
                 G.add_edge(source, target, edge)
             else:
-                raise nx.NetworkXError(
+                # raise nx.NetworkXError(
+                #     'edge #%d (%r%s%r) is duplicated' %
+                #     (i, source, '->' if directed else '--', target))
+                print (nx.NetworkXError(
                     'edge #%d (%r%s%r) is duplicated' %
-                    (i, source, '->' if directed else '--', target))
+                    (i, source, '->' if directed else '--', target)))
         else:
             key = edge.pop('key', None)
             if key is not None and G.has_edge(source, target, key):
-                raise nx.NetworkXError(
+                # raise nx.NetworkXError(
+                #     'edge #%d (%r%s%r, %r) is duplicated' %
+                #     (i, source, '->' if directed else '--', target, key))
+                print (nx.NetworkXError(
                     'edge #%d (%r%s%r, %r) is duplicated' %
-                    (i, source, '->' if directed else '--', target, key))
+                    (i, source, '->' if directed else '--', target, key)))
+
             G.add_edge(source, target, key, edge)
 
     if label != 'id':
