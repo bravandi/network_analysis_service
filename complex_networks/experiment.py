@@ -98,7 +98,7 @@ class Experiment:
         return q
 
     def snap_load_network(self, graph_path, name, is_binary_file, network_id, directed=True,
-                          model=constants.NetworkModel.real_network(), initialize_graph=True):
+                          model=constants.NetworkModel.real_network(), initialize_graph=True, draw=False):
 
         q = Network(
             experiment=self,
@@ -130,7 +130,7 @@ class Experiment:
                         snap.PUNGraph,  # PNEANet -> load directed network  |  PUNGraph -> load directed graph
                         path_t, 0, 1)
 
-            if self.draw_graphs:
+            if draw and self.draw_graphs:
                 tmp = graph_path.replace('\\', '/')
                 path_parts = tmp.split('/')
 

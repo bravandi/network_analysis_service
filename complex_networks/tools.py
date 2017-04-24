@@ -47,7 +47,7 @@ def absolute_path(path):
     return os.path.abspath(path)
 
 
-def networkx_draw(G, path):
+def networkx_draw(G, path, label='', positions=None):
     pos = nx.nx_pydot.graphviz_layout(G)
 
     if not os.path.exists(os.path.dirname(path + '.dot')):
@@ -59,13 +59,20 @@ def networkx_draw(G, path):
         'splines': True,
         'ranksep': 3,
         'nodesep': 0.8,
-        '#ratio': 1
+        '#ratio': 1,
+        'label': label
     }
+
+    if positions is not None:
+        nx.set_node_attributes(G, 'pos', positions)
 
     nx.nx_pydot.write_dot(G, path + '.dot')
 
+    if positions is None:
     # run_command("dot -Tpng %s > %s" % (path + '.dot', path))
-    run_command("dot -Tjpg %s -o %s" % (path + '.dot', path), no_pipe=True)
+        run_command("dot -Tjpg %s -o %s" % (path + '.dot', path), no_pipe=True)
+    else:
+        run_command("dot -Kfdp -n -Tjpg %s -o %s" % (path + '.dot', path), no_pipe=True)
 
     return path
 

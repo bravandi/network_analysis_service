@@ -548,38 +548,37 @@ class GeneralTools:
         if draw_graphs is True:
             GeneralTools.draw_bipartite_rep_graph(
                 ex=ex, snap_graph=other_output['bipartite_representation_tungraph'], graph_type='undirected',
-                file_name="bipartite_red_colored", network_cn=network_cn, augmenting_path_list=augmenting_path_list)
+                file_name="bipartite_red_colored", network_cn=network_cn, augmenting_path_list=augmenting_path_list,
+                original_graph_nodes=networkx_digraph.nodes(),
+                label_draw="Unmatched: {} Matched: {} Do -/+{} to get outset/inset\nRedundant:{} Intermittent: {} Critical: {}".format(
+                    ["{}|{}".format(node, node + len(networkx_digraph) + 1) for node in mds],
+                    ["{}|{}".format(node, node + len(networkx_digraph) + 1) for node in
+                     set(networkx_digraph.nodes()) - set(unmatched_nodes)],
+                    len(networkx_digraph) + 1, redundant_nodes, intermittent_nodes, critical_nodes
+                )
+            )
 
         return perc_r, redundant_nodes, intermittent_nodes, critical_nodes, mds, other_output
 
     @staticmethod
-    def draw_bipartite_rep_graph(ex, network_cn, augmenting_path_list, file_name, graph_type='undirected',
-                                 on_before_draw=None, networkx_graph=None, snap_graph=None):
+    def draw_bipartite_rep_graph(ex, network_cn, augmenting_path_list, file_name, original_graph_nodes,
+                                 graph_type='undirected', on_before_draw=None, networkx_graph=None, snap_graph=None,
+                                 label_draw=''):
 
         if snap_graph is not None:
             networkx_graph = ex.snap_to_networkx_cnetwork(
                 snap_g=snap_graph, name=network_cn.name,
                 network_id=network_cn.network_id, model=network_cn.model, graph_type=graph_type).graph
 
-        # for augmenting_p in augmenting_path_list:
-        #     prev_node = -1
-        #     color = colors.next()
-        #     for node_id in augmenting_p:
-        #         if prev_node > -1:
-        #             if network_x_bip_rep.graph.has_edge(prev_node, node_id) is False:
-        #                 raise Exception("edge does not exists {} - {}".format(prev_node, node_id))
-        #             network_x_bip_rep.graph.add_edge(prev_node, node_id, color=color)
-        #             prev_node = node_id
-        #         else:
-        #             prev_node = node_id
-
-        # tools.networkx_draw(
-        #     G=networkx_graph,
-        #     path="%s/%s/%s.jpg" % (constants.path_draw_graphs, network_cn.network_id, "bipartite_rep_multi_edge"))
-
-        # network_x_bip_rep = network_cn.experiment.snap_to_networkx_cnetwork(
-        #     snap_g=snap_graph, name=network_cn.name,
-        #     network_id=network_cn.network_id, model=network_cn.model, graph_type='undirected')
+        # You will node to consider the other 3 types of graphs as well
+        if graph_type == 'multigraph' and type(networkx_graph) != nx.MultiGraph:
+            networkx_multi_graph = nx.MultiGraph()
+            networkx_multi_graph.add_nodes_from(networkx_graph.nodes())
+            networkx_multi_graph.add_edges_from(networkx_graph.edges())
+            del networkx_graph
+            networkx_graph = networkx_multi_graph
+            # for edge in networkx_graph.edges():
+            #     networkx_multi_graph.add_edge(edge[0], edge[1])
 
         colors = None
         is_multi_graph = False
@@ -607,10 +606,27 @@ class GeneralTools:
         if on_before_draw is not None:
             on_before_draw(networkx_graph)
 
+        positions = {}
+        n = len(original_graph_nodes)
+        for node in original_graph_nodes[:]:
+            original_graph_nodes.append(node + n + 1)
+
+        for node in original_graph_nodes:
+            if networkx_graph.has_node(node) is False:
+                networkx_graph.add_node(node)
+
+            if node > n:
+                positions[node] = "{},0!".format((node - (n + 1)) * 1.5)
+            else:
+                positions[node] = "{},4!".format(node * 1.5)
+                pass
+
         return tools.networkx_draw(
             G=networkx_graph,
             # path="%s/%s/%s.jpg" % (constants.path_draw_graphs, network_cn.network_id, file_name)
-            path="%s/%s/%s.jpg" % (constants.path_draw_graphs, ex.root_folder_work, file_name)
+            path="%s/%s/%s.jpg" % (constants.path_draw_graphs, ex.root_folder_work, file_name),
+            label="{}\n{}".format(label_draw, str(augmenting_path_list).replace('], [', ']\n[')),
+            positions=positions
         )
 
     @staticmethod
@@ -817,8 +833,8 @@ class RandomGraphs:
             tmp.add_nodes_from(input_networkx_graph.nodes())
             tmp.add_edges_from(input_networkx_graph.edges())
 
+            del input_networkx_graph
             input_networkx_graph = tmp
-            del tmp
 
         if network_id is None:
             network_id = GeneralTools.generate_random_network_id()
@@ -852,21 +868,28 @@ class RandomGraphs:
         }
 
         if draw_bipartite_matching_for_each_link_switch:
-            GeneralTools.draw_bipartite_rep_graph(
-                ex=ex_orig,
-                # networkx_graph=other_output_orig['bipartite_representation_tungraph'],
-                networkx_graph=networkx_bipartite_representation_orgi,
-                graph_type='undirected',
-                file_name='{0:04d}_Nr_{1:07.4f}_{2}'.format(0, perc_r_orig, 'bipartite_rep_colored'),
-                network_cn=network_cn_orig, augmenting_path_list=augmenting_path_list_orig)
+            label = "Unmatched: {} Matched: {} Do -/+{} to get outset/inset\nRedundant:{} Intermittent: {} Critical: {}".format(
+                ["{}|{}".format(node, node + n + 1) for node in mds_orig],
+                ["{}|{}".format(node, node + n + 1) for node in
+                 set(input_networkx_graph.nodes()) - set(other_output_orig['unmatched_nodes'])],
+                n + 1, redundant_nodes_orig, intermittent_nodes_orig, critical_nodes_orig
+            )
+
+            # GeneralTools.draw_bipartite_rep_graph(
+            #     ex=ex_orig,
+            #     networkx_graph=networkx_bipartite_representation_orgi,
+            #     original_graph_nodes=input_networkx_graph.nodes(),
+            #     graph_type='undirected',
+            #     file_name='{0:04d}_Nr_{1:07.4f}_{2}'.format(0, perc_r_orig, 'bipartite_red_colored'),
+            #     network_cn=network_cn_orig, augmenting_path_list=augmenting_path_list_orig, label_draw=label)
 
             GeneralTools.draw_bipartite_rep_graph(
                 ex=ex_orig,
-                # snap_graph=other_output_orig['bipartite_representation_tungraph'],
                 networkx_graph=networkx_bipartite_representation_orgi,
+                original_graph_nodes=input_networkx_graph.nodes(),
                 graph_type='multigraph',
-                file_name='{0:04d}_Nr_{1:07.4f}_{2}'.format(0, perc_r_orig, 'bipartite_rep_multigraph_color'),
-                network_cn=network_cn_orig, augmenting_path_list=augmenting_path_list_orig)
+                file_name='{0:04d}_Nr_{1:07.4f}_{2}'.format(0, perc_r_orig, 'bipartite_red_multigraph_color'),
+                network_cn=network_cn_orig, augmenting_path_list=augmenting_path_list_orig, label_draw=label)
 
         edges_betweenness_centrality_orgi = nx.edge_betweenness_centrality(networkx_bipartite_representation_orgi)
         nodes_betweenness_centrality_orgi = nx.betweenness_centrality(networkx_bipartite_representation_orgi)
@@ -893,7 +916,7 @@ class RandomGraphs:
             input_networkx_graph_2.remove_edge(edge[0], edge[1])
             print ("#{} | switch {} - {} TO {} - {}".format(i, edge[0], edge[1], edge[1], edge[0]))
 
-            input_networkx_graph_2.add_edge(edge[1], edge[0], color='green')
+            input_networkx_graph_2.add_edge(edge[1], edge[0])
 
             perc_r, redundant_nodes, intermittent_nodes, critical_nodes, mds, other_output = \
                 GeneralTools.identify_node_types(
@@ -906,8 +929,9 @@ class RandomGraphs:
             augmenting_path_list = other_output['augmenting_path_list']
 
             def on_before_draw(netx_g):
-                netx_g.add_edge(edge[0], edge[1] + (n + 1), color='blue')
-                netx_g.add_edge(edge[1], edge[0] + (n + 1), color='green')
+                # netx_g.add_edge(edge[0], edge[1] + (n + 1), style='bold')
+                # the key 0 is the default key so it makes the first edge dashed
+                netx_g.add_edge(edge[1], edge[0] + (n + 1), 0, style='dashed')
                 pass
 
             if draw_bipartite_matching_for_each_link_switch:
@@ -916,16 +940,20 @@ class RandomGraphs:
                 ex.root_folder_work = tools.path_split(ex.root_folder_work, 0)[1] + "\\switched_links"
 
                 saved_pic_path = GeneralTools.draw_bipartite_rep_graph(
-                    ex=ex, snap_graph=other_output['bipartite_representation_tungraph'],
+                    ex=ex,
+                    snap_graph=other_output['bipartite_representation_tungraph'],
                     file_name="{0:04d}_Nr_{1:07.4f}_switchedEdge_{2}-{3}_to_{3}-{2}_({4}-{5}_to_{6}-{7})".format(
                         i, perc_r,
                         edge[0], edge[1],
                         edge[0], edge[1] + (n + 1),
                         edge[1], edge[0] + (n + 1)),
+                    original_graph_nodes=input_networkx_graph_2.nodes(), graph_type='multigraph',
                     network_cn=network_cn, augmenting_path_list=augmenting_path_list,
                     on_before_draw=on_before_draw
                 )
-
+                # need lock here | sometime os is slow to create the file
+                while os.path.isfile(saved_pic_path) is False:
+                    pass
                 copyfile(
                     saved_pic_path,
                     os.path.join(constants.path_draw_graphs, root_folder_work_before_change,
@@ -1208,8 +1236,8 @@ class RandomGraphs:
             , label='id'
         )
         RandomGraphs.experiment_switch_link_direction(
-            input_networkx_graph=G, root_folder_work=path_parts[len(path_parts) - 1][:-4], draw_graphs=False,
-            network_id=None, draw_bipartite_matching_for_each_link_switch=False)
+            input_networkx_graph=G, root_folder_work=path_parts[len(path_parts) - 1][:-4], draw_graphs=True,
+            network_id=None, draw_bipartite_matching_for_each_link_switch=True)
 
 
 if __name__ == '__main__':

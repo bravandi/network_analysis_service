@@ -259,10 +259,11 @@ class Control:
                           "Save as tab-separated list of edges")
 
         if self.network.experiment.draw_graphs:
-            tools.snap_draw(
-                graph_max_flow_representation,
-                "%s/%s/b_graph_maxflow" % (constants.path_draw_graphs, self.network.experiment.root_folder_work),
-                "max flow")
+            # tools.snap_draw(
+            #     graph_max_flow_representation,
+            #     "%s/%s/b_graph_maxflow" % (constants.path_draw_graphs, self.network.experiment.root_folder_work),
+            #     "max flow")
+            pass
         # ;;;;;;;;;;;;;;;;;;;;;;;; save bipartite representation ;;;;;;;;;;;;;;;;;;;;
         graph_max_flow_representation.DelNode(source_node)
         graph_max_flow_representation.DelNode(sink_node)
@@ -302,7 +303,8 @@ class Control:
             model=constants.NetworkModel.bipartite_matching(),
             name='BIPARTITE MATCHING - ' + self.network.name,
             network_id=self.network.network_id,
-            directed=False
+            directed=False,
+            draw=True
         )
 
         # if self.network.experiment.debug:
@@ -359,7 +361,8 @@ class Control:
             model=constants.NetworkModel.bipartite_matching(),
             name='MAXIMUM MATCHING - ' + self.network.name,
             network_id=self.network.network_id,
-            directed=False
+            directed=False,
+            draw=True
         )
 
     # todo implement caching
@@ -370,7 +373,8 @@ class Control:
             model=constants.NetworkModel.bipartite_matching(),
             name='BIPARTITE REPRESENTATION - ' + self.network.name,
             network_id=self.network.network_id,
-            directed=False
+            directed=False,
+            draw=False
         )
 
     def snap_is_path_to_unmatched_node_exists(
