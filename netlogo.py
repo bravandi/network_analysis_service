@@ -31,32 +31,35 @@ def identify_nodes_control_types(path, debug=False, draw_graphs=False):
     augmenting_paths = ''
 
     n = len(net.nodes())
+    out_set_cutoff = max(net.nodes())
     previous_node = -1
+
+    nodes_attributes = dict(net.nodes(True))
 
     for path in augmenting_path_list:
         augmenting_paths += '['
         for node in path:
-            if node > n:
+            if node > out_set_cutoff:
                 node = node - (n + 1)
                 if net.has_edge(previous_node, node) is False:
                     raise Exception("edge does not exists {}, {}".format(previous_node, node))
 
-            augmenting_paths += str(node) + ' '
+            augmenting_paths += str(nodes_attributes[node]['WHO']) + ' '
             previous_node = node
 
         augmenting_paths += ']'
 
     for node in redundant_nodes:
-        redundant_nodes_who += str(dict(net.nodes(True))[node]['WHO']) + ' '
+        redundant_nodes_who += str(nodes_attributes[node]['WHO']) + ' '
 
     for node in intermittent_nodes:
-        intermittent_nodes_who += str(dict(net.nodes(True))[node]['WHO']) + ' '
+        intermittent_nodes_who += str(nodes_attributes[node]['WHO']) + ' '
 
     for node in critical_nodes:
-        critical_nodes_who += str(dict(net.nodes(True))[node]['WHO']) + ' '
+        critical_nodes_who += str(nodes_attributes[node]['WHO']) + ' '
 
     for node in mds:
-        mds_who += str(dict(net.nodes(True))[node]['WHO']) + ' '
+        mds_who += str(nodes_attributes[node]['WHO']) + ' '
 
     result = "r:[%s]:r i:[%s]:i c:[%s]:c mds:[%s]:mds aug:[%s]:aug" % \
              (
@@ -71,13 +74,14 @@ def identify_nodes_control_types(path, debug=False, draw_graphs=False):
 
 
 # node data
-# dict(net.nodes(True))[101]
+# dd[101]
 pass
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
         identify_nodes_control_types(
-            path='d:\\temp\\netlogo-diffusion.gml',
+            # path="D:\\Temp\\netlogo-diffusion.gml",
+            path='D:\\Temp\\IMPORTANT CAUSE ERROR\\netlogo-diffusion n3 e4.gml',
             # path="D:\\temp\\low_r\\n_15\\0.1330r_0.1330_k_0006.4000_n_000015_l_0000000096_p_00.9000_DegreeVariance_0001.2267.gml",
             debug=True, draw_graphs=True)
         # raise Exception("path must be given")
