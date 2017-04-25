@@ -1367,6 +1367,13 @@ class RandomGraphs:
                 root_folder_work += "{}-{}_".format(link[0], link[1])
 
             root_folder_work = root_folder_work[:-1]
+        #
+        copy_to = tools.absolute_path(constants.path_bipartite_representations + root_folder_work)
+        if not os.path.exists(copy_to):
+            os.makedirs(copy_to)
+        copy_to += "\\" + tools.path_split(path, -1)[1]
+        networkx_gml.write_gml(G, copy_to)
+        # copyfile(path, copy_to + "\\" + tools.path_split(path, -1)[1])
 
         RandomGraphs.experiment_switch_link_direction(
             input_networkx_digraph=G, root_folder_work=root_folder_work, draw_graphs=True,
