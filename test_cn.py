@@ -904,6 +904,12 @@ class RandomGraphs:
                 network_cn=network_cn_orig, augmenting_path_list=augmenting_path_list_orig, label_draw=label)
 
         edges_betweenness_centrality_orgi = nx.edge_betweenness_centrality(networkx_bipartite_representation_orgi)
+        tmp = {}
+        for key, value in edges_betweenness_centrality_orgi.items():
+            tmp[key] = round(value, 2)
+        edges_betweenness_centrality_orgi = tmp
+        del tmp
+
         nodes_betweenness_centrality_orgi = nx.betweenness_centrality(networkx_bipartite_representation_orgi)
         nodes_latapy_clustering = nx.bipartite.latapy_clustering(
             networkx_bipartite_representation_orgi,
@@ -916,7 +922,8 @@ class RandomGraphs:
         in_set_cutoff = max(input_networkx_graph.nodes())
         i = 1
 
-        stats = {}
+        stats = []
+        stats2 = {}
 
         for edge in input_networkx_graph.edges():
             # if (edge[0] == 7 and edge[1] == 21) is False:
@@ -993,10 +1000,10 @@ class RandomGraphs:
             # input_graph_in_degree = networkx_bipartite_representation_orgi.in_degree()
             # input_graph_out_degree = networkx_bipartite_representation_orgi.out_degree()
             in_set_node_id = edge[1] + n + 1
-            stats["{0:07.4f} ({1}({3})->{2}({4}))".format(
-                perc_r, edge[0], edge[1], edge[0] + n + 1, in_set_node_id)] = \
+            tmp = \
                 {
                     '00 Nr_perc': perc_r,
+                    '00 key': "({0},{1})->({0},{2})".format(edge[0], edge[1], in_set_node_id),
                     "01 Nr": len(redundant_nodes),
                     "02 Ni": len(intermittent_nodes),
                     "03 Nc": len(critical_nodes),
@@ -1019,21 +1026,88 @@ class RandomGraphs:
                     '14 To node degrees': "total: {}".format(bipartite_representation_orgi_total_degree[in_set_node_id])
                 }
 
+            stats.append(tmp)
+            stats2[(edge[0], edge[1])] = tmp
+            stats2[(edge[0], in_set_node_id)] = tmp
             i += 1
 
+        stats.sort(key=lambda x: x["00 Nr_perc"], reverse=True)
         output = "\tOriginal graph control properties:\n{}\n" \
-                 "-----------------------------------------" \
             .format(pprint.pformat(original_graph_control_properties))
 
+        output += "\n;;;;;;;;;;;;;;;Augmenting Paths;;;;;;;;;;;;;;;;;\n"
+        augmenting_path_list_orig_list = []
+        augmenting_links = set()
+
+        def convert_node_id_to_ordinal_id(node_id, cut_off, number_of_nodes):
+            if node_id > cut_off:
+                return node_id - (number_of_nodes + 1)
+            return node_id
+
+        def convert_list_link_to_original_id(links):
+            result = ""
+            if type(links) is not list:
+                links = [links]
+            for item in links:
+                result += "({},{}->{},{}), ".format(item[0], item[1],
+                                                    convert_node_id_to_ordinal_id(item[0], in_set_cutoff, n),
+                                                    convert_node_id_to_ordinal_id(item[1], in_set_cutoff, n))
+            return result[:-1]
+
+        for index in range(0, len(augmenting_path_list_orig)):
+            tmp = []
+            for index_j in range(0, len(augmenting_path_list_orig[index]) - 1):
+                a = augmenting_path_list_orig[index][index_j]
+                b = augmenting_path_list_orig[index][index_j + 1]
+                if a > b:
+                    link = (b, a)
+                else:
+                    link = (a, b)
+
+                tmp.append(link)
+                augmenting_links.add(link)
+
+            augmenting_path_list_orig_list.append((
+                # (path size, path)
+                len(tmp), tmp)
+            )
+
+        augmenting_path_list_orig_list.sort(key=lambda x: x[0], reverse=True)
+
+        for item in augmenting_path_list_orig_list:
+            output += "\tSize {}: {}\n".format(item[0], convert_list_link_to_original_id(item[1]))
+
+        output += "Frequency:\n"
+        link_frequency = []
+        for link in augmenting_links:
+            freq = 0
+            for path in augmenting_path_list_orig_list:
+                for link_path in path[1]:
+                    if link_path == link:
+                        freq += 1
+            link_frequency.append(
+                # (frequency, link)
+                (freq, link)
+            )
+
+        link_frequency.sort(key=lambda x: x[0], reverse=True)
+
+        for item in link_frequency:
+            output += "\tFreq {}: {} Switched to ({}, {}) Nr_perc: {}\n".format(
+                item[0], convert_list_link_to_original_id(item[1]),
+                convert_node_id_to_ordinal_id(item[1][1], in_set_cutoff, n), item[1][0] + n + 1,
+                stats2[item[1]]['00 Nr_perc'])
+
+        output += "\n\n---------------------------Partitions-----------------------------\n"
         # print (stats[(8, 10)])
-        cut_of_partition = {}
+        cut_of_partition = []
         cut_of_value = 0.7
-        other_nodes = {}
-        for item_key, value in stats.items():
+        other_nodes = []
+        for value in stats:
             if value["00 Nr_perc"] > 0.7:
-                cut_of_partition[item_key] = value
+                cut_of_partition.append(value)
             else:
-                other_nodes[item_key] = value
+                other_nodes.append(value)
 
         def calc_mean(x, key):
             # try:
@@ -1054,17 +1128,17 @@ class RandomGraphs:
 
         def calc_overall_stats(dict_values):
             result = ""
-            result += calc_mean(dict_values.values(), '06 Edge Betweenness Centrality')
-            result += calc_mean(dict_values.values(), '07 From Node Betweenness Centrality')
-            result += calc_mean(dict_values.values(), '08 To Node Betweenness Centrality')
-            result += calc_mean(dict_values.values(), '09 From Node Closeness Centrality')
-            result += calc_mean(dict_values.values(), '10 To Node Closeness Centrality')
-            result += calc_mean(dict_values.values(), '11 From Node Latapy Clustering')
-            result += calc_mean(dict_values.values(), '12 To Node Latapy Clustering')
+            result += calc_mean(dict_values, '06 Edge Betweenness Centrality')
+            result += calc_mean(dict_values, '07 From Node Betweenness Centrality')
+            result += calc_mean(dict_values, '08 To Node Betweenness Centrality')
+            result += calc_mean(dict_values, '09 From Node Closeness Centrality')
+            result += calc_mean(dict_values, '10 To Node Closeness Centrality')
+            result += calc_mean(dict_values, '11 From Node Latapy Clustering')
+            result += calc_mean(dict_values, '12 To Node Latapy Clustering')
             return result
 
         # edges_cent2 = sorted(edges_cent.items(), key=operator.itemgetter(1), reverse=True)
-        output += ";;;;;;;;;;;;;;;Switch Links Analysis;;;;;;;;;;;;;;;\n\tNr > {}\n".format(cut_of_value)
+        output += "\n\tParition Nodes Nr > {}\n".format(cut_of_value)
         output += calc_overall_stats(cut_of_partition)
         # print (';;;\t;;;;;;;;;;; not significant ;;;;;;;;;;;;;')
 
@@ -1074,37 +1148,46 @@ class RandomGraphs:
         output += "\n\tAll nodes together\n"
         output += calc_overall_stats(stats)
 
-        def normalize_dictionary(dict, input_graph_n):
+        def normalize_dictionary(dict, in_set_cutoff, main_graph):
             result = {}
-            for index in range(0, (input_graph_n * 2) + 1):
-                if index == input_graph_n:
-                    result[index] = "InSet"
-                    continue
+            n = len(main_graph.nodes())
+            result[n] = "---INSET:---"
+            for out_set_node_id in main_graph.nodes():
+
+                in_set_node_id = out_set_node_id + n + 1
 
                 prefix = ""
-                if index > input_graph_n:
-                    prefix = "{}|".format(index - (n + 1))
-
-                if dict.has_key(index):
-                    result[index] = prefix + "{0:05.2f}".format(round(dict[index], 3))
+                if out_set_node_id in dict:
+                    result[out_set_node_id] = prefix + "{0:.2f}".format(round(dict[index], 3))
                 else:
-                    result[index] = prefix + "NaN"
+                    result[out_set_node_id] = prefix + "NaN"
+
+                prefix = "{}|".format(out_set_node_id)
+                if in_set_node_id in dict:
+                    result[in_set_node_id] = prefix + "{0:.2f}".format(round(dict[index], 3))
+                else:
+                    result[in_set_node_id] = prefix + "NaN"
 
             return result
 
-        output += "\n\t(starting index {0} is the InSet. Do -{1} to get original node id. " \
-                  "\n\tThere is no node {0} in the bipartite representation of the graph):\n". \
+        output += "\n--------------------Graph Algorithms-------------------------" \
+                  "\n\t(starting index {0} is the InSet. Do -{1} to get original node id. " \
+                  "\n\tThere is no node {0} in the bipartite representation of the graph):\n\n". \
             format(in_set_cutoff, n + 1)
 
         output += "Edges Betweenness Centrality: {}\n".format(edges_betweenness_centrality_orgi)
-        output += "Nodes Betweenness Centrality: {}\n".format(normalize_dictionary(nodes_betweenness_centrality_orgi,
-                                                                                   n_bipartite_representation_orgi))
-        output += "Nodes Latapy Clustering     : {}\n".format(normalize_dictionary(nodes_latapy_clustering,
-                                                                                   n_bipartite_representation_orgi))
-        output += "Nodes Closeness Centrality  : {}\n".format(normalize_dictionary(nodes_closeness_centrality,
-                                                                                   n_bipartite_representation_orgi))
+        output += "\nNodes Betweenness Centrality: {}\n".format(normalize_dictionary(
+            nodes_betweenness_centrality_orgi, in_set_cutoff, input_networkx_graph))
+        output += "\nNodes Latapy Clustering     : {}\n".format(normalize_dictionary(
+            nodes_latapy_clustering, in_set_cutoff, input_networkx_graph))
+        output += "\nNodes Closeness Centrality  : {}\n".format(normalize_dictionary(
+            nodes_closeness_centrality, in_set_cutoff, input_networkx_graph))
 
-        output += ("\n\tstats switch link results:\n {}".format(pprint.pformat(stats)))
+        output += "\n-------------------------Switch Links Analysis----------------------------\n"
+        output += "stats switch link results:\n"
+        for item in stats:
+            output += "__________________________________________________________________________" \
+                      "\n{}: {}\n".format(item['00 key'], pprint.pformat(item, indent=10))
 
         try:
             with open(tools.absolute_path(
@@ -1268,8 +1351,8 @@ class RandomGraphs:
             , label='id'
         )
         RandomGraphs.experiment_switch_link_direction(
-            input_networkx_graph=G, root_folder_work=path_parts[len(path_parts) - 1][:-4], draw_graphs=True,
-            network_id=None, draw_bipartite_matching_for_each_link_switch=True)
+            input_networkx_graph=G, root_folder_work=path_parts[len(path_parts) - 1][:-4], draw_graphs=False,
+            network_id=None, draw_bipartite_matching_for_each_link_switch=False)
 
 
 if __name__ == '__main__':
