@@ -471,9 +471,18 @@ class Network:
         return "successful"
 
     @staticmethod
-    def networkx_create_from_gml(path, label='id', experiment=None, db_id=None, name=""):
+    def networkx_create_from_gml(path, label='id', convert_to_digraph=False, experiment=None, db_id=None, name=""):
+        G = networkx_gml.read_gml(path, label=label)
 
-        return networkx_gml.read_gml(path, label=label)
+        if convert_to_digraph:
+            if type(G) is nx.Graph:
+                tmp = nx.DiGraph()
+                tmp.add_nodes_from(G.nodes())
+                tmp.add_edges_from(G.edges())
+
+                return tmp
+
+        return G
 
         # complex_network = Network(
         #     experiment=experiment,
