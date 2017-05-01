@@ -82,46 +82,6 @@ def find_control_nodes():
     #        ))
 
 
-def bfs():
-    source_node = 1
-
-    G1 = snap.PUNGraph.New()
-    bfs_tree = snap.PUNGraph.New()
-
-    bfs_tree.AddNode(source_node)
-
-    for i in range(1, 8 + 1):
-        G1.AddNode(i)
-
-    G1.AddEdge(1, 6)
-    G1.AddEdge(2, 5)
-    G1.AddEdge(2, 6)
-    G1.AddEdge(3, 6)
-    G1.AddEdge(3, 7)
-    G1.AddEdge(3, 8)
-    G1.AddEdge(4, 7)
-
-    vec = snap.TIntV()
-
-    vec.Add(source_node)
-
-    while not vec.Empty():
-
-        u = vec[0]
-        vec.Del(0)
-
-        for v in G1.GetNI(u).GetOutEdges():
-
-            if bfs_tree.IsNode(v) is False:
-                bfs_tree.AddNode(v)
-                bfs_tree.AddEdge(u, v)
-
-                vec.Add(v)
-    # snap.GetShortPath_PUNGraph(bfs_tree, 1, 10)
-
-    print ([(e.GetSrcNId(), e.GetDstNId()) for e in bfs_tree.Edges()])
-
-
 def load_network_from_text(path):
     ex = Experiment(debug=False, draw_graphs=False)
 
@@ -159,7 +119,10 @@ def load_network_from_text(path):
 
     print ("d:\\temp\\fromR\\" + output_file_name + ".gml")
 
-    print (float(len(redundant_nodes)) / network_cn.graph.GetNodes())
+    print ("nd: {} nr: {}".format(
+        len(unmatched_nodes_inset),
+        float(len(redundant_nodes)) / network_cn.graph.GetNodes())
+    )
 
 
 class ScaleFree:
@@ -500,6 +463,19 @@ class ScaleFree:
 
 
 class GeneralTools:
+    @staticmethod
+    def identify_node_type_given_path(path):
+        G = networkx_gml.read_gml(path, label='id')
+
+        GeneralTools.identify_node_types(
+            networkx_digraph=G,
+            root_folder_work=tools.path_split(path, -1)[1],
+            debug=True,
+            draw_graphs=False,
+            show_plots=False,
+            network_id=1,
+            draw_label_prefix='')
+
     @staticmethod
     def identify_node_types(
             networkx_digraph, root_folder_work, debug=False, draw_graphs=False, show_plots=False,
@@ -1222,7 +1198,7 @@ class RandomGraphs:
         show_plots = True
 
         deg_seq_length = 500
-        for i in range(0, 11):
+        for i in range(0, 1):
             start_time_2 = datetime.now()
 
             deg_seq_length += 200
@@ -1332,14 +1308,19 @@ class RandomGraphs:
 
     @staticmethod
     def experiment_switch_link_direction_controller():
+        draw_bipartite_matching_for_each_link_switch = True
+        draw_graphs = True
+        analise_all_links = True
+        switch_links = []
+
         # path = "D:\\temp\\low_r\\n_5\\0.2000r_0.2000_k_0001.8000_n_000005_l_0000000009_p_00.9000_DegreeVariance_0000.2400.gml"
 
-        switch_links = [(5, 9), (1, 4), (2, 6)]
-        path = "D:\\temp\\low_r\\n_10\\0.0000r_0.0000_k_0002.4000_n_000010_l_0000000024_p_00.6000_DegreeVariance_0001.9600.gml"
+        # switch_links = [(5, 9), (1, 4), (2, 6)]
+        # path = "D:\\temp\\low_r\\n_10\\0.0000r_0.0000_k_0002.4000_n_000010_l_0000000024_p_00.6000_DegreeVariance_0001.9600.gml"
 
         # path = "D:\\temp\\low_r\\n_5\\0.0000r_0.0000_k_0001.6000_n_000005_l_0000000008_p_00.8000_DegreeVariance_0000.5600.gml"
         # path = "D:\\temp\\low_r\\n_20\\0.2500r_0.2500_k_0005.8500_n_000020_l_0000000117_p_00.6000_DegreeVariance_0003.9100.gml"
-        # path = "D:\\temp\\low_r\\n_5\\0.2000r_0.2000_k_0001.8000_n_000005_l_0000000009_p_00.9000_DegreeVariance_0000.2400.gml"
+        path = "D:\\temp\\low_r\\n_5\\0.2000r_0.2000_k_0001.8000_n_000005_l_0000000009_p_00.9000_DegreeVariance_0000.2400.gml"
         # path = "D:\\temp\\random_graph\\n_10_p_0.4.gml"
         # path = "D:\\SoftwareProject\\network_analysis_service\\data\\Neural Network\\celegansneural.gml"
         # path = 'D:\\Temp\\IMPORTANT_CAUSE ERROR\\netlogo-diffusion_n3_e4.gml'
@@ -1376,9 +1357,9 @@ class RandomGraphs:
         # copyfile(path, copy_to + "\\" + tools.path_split(path, -1)[1])
 
         RandomGraphs.experiment_switch_link_direction(
-            input_networkx_digraph=G, root_folder_work=root_folder_work, draw_graphs=True,
-            network_id=None, draw_bipartite_matching_for_each_link_switch=True,
-            analise_all_links=False
+            input_networkx_digraph=G, root_folder_work=root_folder_work, draw_graphs=draw_graphs,
+            network_id=None, draw_bipartite_matching_for_each_link_switch=draw_bipartite_matching_for_each_link_switch,
+            analise_all_links=analise_all_links
         )
 
 
@@ -1386,7 +1367,42 @@ if __name__ == '__main__':
     start_time = datetime.now()
     print ("started: " + str(start_time) + "\n;;;;;;;;;;;;;;")
 
-    RandomGraphs.experiment_switch_link_direction_controller()
+    # RandomGraphs.experiment_switch_link_direction_controller()
+
+    # GeneralTools.identify_node_type_given_path(
+    #     "D:\\Temp\\scale_free_bimodal\\scale_free_k_14_n_1000_lambda_out_2.67_lambda_in_3.0_.gml"
+    # )
+    path = "D:\\Temp\\scale_free\\"
+    # path +=  "n_5000_alpha_0.08_beta_0.5_gamma_0.42_deltaIn_0.0_deltaOut_0.2.gml"
+    # path += "n_5000_alpha_0.41_beta_0.54_gamma_0.05_deltaIn_0.2_deltaOut_0.gml"
+    # path += "n_10000_alpha_0.08_beta_0.5_gamma_0.42_deltaIn_0.0_deltaOut_0.2.gml"
+    path += "n_100000_alpha_0.08_beta_0.5_gamma_0.42_deltaIn_0.0_deltaOut_0.2.gml"
+
+    load_network_from_text(path="d:\\temp\\nr_kav_nm_SF_0.5_0.54_1000.txt")
+
+    # GeneralTools.identify_node_type_given_path(path=path)
+
+    n = 5000
+    alpha = 0.08
+    beta = 0.50
+    gamma = 0.42
+    delta_in = 0.0
+    delta_out = 0.2
+
+    # default
+    alpha = 0.41
+    beta = 0.54
+    gamma = 0.05
+    delta_in = 0.2
+    delta_out = 0
+
+    # G = nx.scale_free_graph(n=n, alpha=alpha, beta=beta, gamma=gamma, delta_in=delta_in, delta_out=delta_out)
+    #
+    # networkx_gml.write_gml(
+    #     G,
+    #     "d:\\temp\\scale_free\\n_{}_alpha_{}_beta_{}_gamma_{}_deltaIn_{}_deltaOut_{}.gml".format(
+    #         n, alpha, beta, gamma, delta_in, delta_out
+    #     ))
 
     # RandomGraphs.repeat_experiment()
 
@@ -1400,7 +1416,7 @@ if __name__ == '__main__':
 
     # load_network_from_text(path="d:\\temp\\g.txt")
 
-    # random_network_given_degree_sequence()
+    # RandomGraphs.random_network_given_degree_sequence()
 
     # experiment_scale_free_hidden_parameter_from_network_science_book(show_plots=True)
     # experiment_scale_free_from_bimodal_paper(show_plots=False)

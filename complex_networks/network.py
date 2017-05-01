@@ -544,6 +544,19 @@ class Network:
         return remove_keys(in_degree), remove_keys(out_degree), remove_keys(total_degree)
 
     @staticmethod
+    def networkx_degree_heterogeneity(networkx_graph):
+        delta = 0
+
+
+
+        # for node_i in networkx_graph.nodes():
+        #     for node_j in networkx_graph.nodes():
+        #         delta += abs
+
+        pass
+
+
+    @staticmethod
     def nx_degree_distribution(nx_graph):
         directed = False
 
