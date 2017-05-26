@@ -39,7 +39,10 @@ class GeneralTools:
             plt.title("out-deg from graph")
             plt.show()
 
-        print ("number of self loops: " + str(networkx_digraph.number_of_selfloops()))
+        if debug:
+            print ("number of self loops: " + str(networkx_digraph.number_of_selfloops()))
+            pass
+
         networkx_digraph.remove_edges_from(networkx_digraph.selfloop_edges())
 
         network_cn = ex.networkx_to_snap_cnetwork(networkx=networkx_digraph, name="", network_id=network_id,
