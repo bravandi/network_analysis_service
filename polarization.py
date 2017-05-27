@@ -3,6 +3,7 @@ import networkx as nx
 import random
 import itertools
 from complex_networks.general_tools import GeneralTools
+import complex_networks.tools as tools
 import sys
 import os.path
 
@@ -136,7 +137,8 @@ def using_permutation(n, target_k, c, d, x_cor_max_min, y_cor_max_min, links_wei
 
             G.add_edge(n2, n1, {
                 "weight": weight,
-                "label": str(weight)
+                "label": str(weight),
+                "color": 55  # green
             })
 
     return G
@@ -177,6 +179,57 @@ def add_news_provider(G, driver_node, location_range):
     pass
 
 
+def add_four_news_provider(G, mds, max_num_subscribers):
+    connected_driver_nodes = []
+
+    def add_provider_and_link_to_subscriber(xcor, ycor, max_num_subs):
+        new_node_id = G.number_of_nodes()
+        G.add_node(new_node_id, {
+            "education": -1, "economic": -1, "WHO": new_node_id, "color": "29",
+            "driver": 0, "provider": 1,
+            "XCOR": xcor,
+            "YCOR": ycor})
+
+        weight = 0.8
+
+        eligible_news_subscribers = []
+
+        for driver_node_2 in mds:
+            driver_node_xcor = G.node[driver_node_2]["XCOR"]
+            driver_node_ycor = G.node[driver_node_2]["YCOR"]
+
+            if xcor > 0 and ycor > 0 and driver_node_xcor > 0 and driver_node_ycor > 0:
+                eligible_news_subscribers.append(driver_node_2)
+            elif xcor < 0 and ycor > 0 and driver_node_xcor < 0 and driver_node_ycor > 0:
+                eligible_news_subscribers.append(driver_node_2)
+            elif xcor < 0 and ycor < 0 and driver_node_xcor < 0 and driver_node_ycor < 0:
+                eligible_news_subscribers.append(driver_node_2)
+            elif xcor > 0 and ycor < 0 and driver_node_xcor > 0 and driver_node_ycor < 0:
+                eligible_news_subscribers.append(driver_node_2)
+
+        if max_num_subs == 0:
+            max_num_subs = len(eligible_news_subscribers)
+
+        for i in range(0, max_num_subs):
+            if len(eligible_news_subscribers) > 0:
+                random.shuffle(eligible_news_subscribers)
+                node_to_subscriber = eligible_news_subscribers.pop()
+                connected_driver_nodes.append(node_to_subscriber)
+                G.add_edge(new_node_id, node_to_subscriber,
+                           weight=weight,
+                           label=weight,
+                           color="9.9"  # white
+                           )
+                pass
+        pass
+
+    pos = 9
+    add_provider_and_link_to_subscriber(pos, pos, max_num_subscribers)
+    add_provider_and_link_to_subscriber(-1 * pos, pos, max_num_subscribers)
+    add_provider_and_link_to_subscriber(-1 * pos, -1 * pos, max_num_subscribers)
+    add_provider_and_link_to_subscriber(pos, -1 * pos, max_num_subscribers)
+
+
 def stats(G):
     result = ""
     check_cutoff = 2.5
@@ -208,13 +261,13 @@ def stats(G):
             pass
 
     result += "$avg edu = {} $ num-edge-with-both-nodes-edu > {} = {} $avg-edu-diff = {} $avg-econ-diff = {} $<k> = {}".format(
-        np.average(edu), check_cutoff, len(edu_condition),
-        np.average(edu_diffs),
-        np.average(econ_diffs),
-        (G.number_of_edges() * 2.0) / G.number_of_nodes())
+        round(np.average(edu), 3), check_cutoff, len(edu_condition),
+        round(np.average(edu_diffs), 3),
+        round(np.average(econ_diffs), 3),
+        round((G.number_of_edges() * 2.0) / G.number_of_nodes(), 3))
 
     result += " $weights-avg = {} $count-weights > 0.5 = {}".format(
-        np.average(weights),
+        round(np.average(weights), 3),
         len([w for w in weights if w >= 0.5])
     )
 
@@ -237,10 +290,11 @@ if __name__ == "__main__":
         d = float(sys.argv[11])
         debug = bool(int(sys.argv[12]))
         run_number = int(float(sys.argv[13]))
+        max_num_subscribers = 2
         pass
 
     if debug is True:
-        n = 100
+        n = 200
         target_k = 5.0
         # prob_cut_off = 0.940  #
         x_cor_max_min = 6  # control location belief
@@ -250,10 +304,13 @@ if __name__ == "__main__":
         education_std = 0.55
         economic_mean = 1.5
         economic_std = 0.55  # the smaller the less economic
-        c = 0.05
+        c = 1
         d = 1
         run_number = 10
+        max_num_subscribers = 2
         pass
+
+    max_num_subscribers = 2
 
     G = using_permutation(
         n=n, target_k=target_k,
@@ -266,14 +323,17 @@ if __name__ == "__main__":
         show_plots=False, network_id=1)
 
     stats_val = stats(G)
+    # tools.clipboard_copy(stats_val)
     if debug:
         print(stats_val)
         pass
     # n target_k x_cor_max_min y_cor_max_min links_weight_std education_mean education_std economic_mean economic_std c d debug run_number
     # 100 5 6 6 0.09 1.5 0.55 1.5 0.55 0.5 1.0 1 10
     for driver_node in mds:
-        add_news_provider(G, driver_node, location_range=-7)
+        # add_news_provider(G, mds, location_range=-7)
         G.node[driver_node]["driver"] = 1
+
+    add_four_news_provider(G, mds, max_num_subscribers=max_num_subscribers)
 
     i = 0
     while True:
