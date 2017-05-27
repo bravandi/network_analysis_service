@@ -230,6 +230,55 @@ def add_four_news_provider(G, mds, max_num_subscribers):
     add_provider_and_link_to_subscriber(pos, -1 * pos, max_num_subscribers)
 
 
+def add_four_news_provider_no_mds(G, max_num_subscribers, weight_max_uniform, inverse_distance_divide_by):
+    connected_driver_nodes = []
+
+    def add_provider_and_link_to_subscriber(xcor, ycor, max_num_subs):
+
+        new_node_id = G.number_of_nodes()
+        G.add_node(new_node_id, {
+            "education": -1, "economic": -1, "WHO": new_node_id, "color": "29",
+            "driver": 0, "provider": 1,
+            "XCOR": xcor,
+            "YCOR": ycor})
+
+        # weight = np.absolute(np.round(np.random.normal(0, weight_std), 3))
+        weight = np.round(np.random.uniform(0.1, weight_max_uniform), 3)
+
+        nodes_shuffled = G.nodes()[:]
+        random.shuffle(nodes_shuffled)
+        for node in nodes_shuffled:
+            if max_num_subs > 0 and len(connected_driver_nodes) >= max_num_subs:
+                return
+
+            node_xcor = G.node[node]["XCOR"]
+            node_ycor = G.node[node]["YCOR"]
+
+            distance = np.sqrt(
+                np.power(xcor - node_xcor, 2) + np.power(ycor - node_ycor, 2)) / inverse_distance_divide_by
+
+            if 1 - distance <= 0.01:
+                bino = 0
+            else:
+                bino = np.random.binomial(1, 1 - distance)
+
+            if bino == 1:
+                connected_driver_nodes.append(node)
+                G.add_edge(new_node_id, node,
+                           weight=weight,
+                           label=weight,
+                           color="9.9"  # white
+                           )
+                pass
+        pass
+
+    pos = 9
+    add_provider_and_link_to_subscriber(pos, pos, max_num_subscribers)
+    add_provider_and_link_to_subscriber(-1 * pos, pos, max_num_subscribers)
+    add_provider_and_link_to_subscriber(-1 * pos, -1 * pos, max_num_subscribers)
+    add_provider_and_link_to_subscriber(pos, -1 * pos, max_num_subscribers)
+
+
 def stats(G):
     result = ""
     check_cutoff = 2.5
@@ -290,11 +339,13 @@ if __name__ == "__main__":
         d = float(sys.argv[11])
         debug = bool(int(sys.argv[12]))
         run_number = int(float(sys.argv[13]))
-        max_num_subscribers = 2
+        max_num_subscribers = int(float(sys.argv[14]))
+        subscription_weight_max_uniform = float(sys.argv[15])
+        subscribers_inverse_distance_divide_by = float(sys.argv[16])
         pass
 
     if debug is True:
-        n = 200
+        n = 100
         target_k = 5.0
         # prob_cut_off = 0.940  #
         x_cor_max_min = 6  # control location belief
@@ -307,10 +358,10 @@ if __name__ == "__main__":
         c = 1
         d = 1
         run_number = 10
-        max_num_subscribers = 2
+        max_num_subscribers = 0
+        subscription_weight_max_uniform = 0.3
+        subscribers_inverse_distance_divide_by = 9.0
         pass
-
-    max_num_subscribers = 2
 
     G = using_permutation(
         n=n, target_k=target_k,
@@ -333,7 +384,10 @@ if __name__ == "__main__":
         # add_news_provider(G, mds, location_range=-7)
         G.node[driver_node]["driver"] = 1
 
-    add_four_news_provider(G, mds, max_num_subscribers=max_num_subscribers)
+    add_four_news_provider_no_mds(
+        G, max_num_subscribers=max_num_subscribers,
+        weight_max_uniform=subscription_weight_max_uniform,
+        inverse_distance_divide_by=subscribers_inverse_distance_divide_by)
 
     i = 0
     while True:
@@ -350,11 +404,14 @@ if __name__ == "__main__":
 
     line_prepender(
         path,
-        "#n = {0}\n#target_k = {1}\n#c = {2}\n#d = {10}\n"
-        "#x_cor_max_min = {3}\n#y_cor_max_min = {4}\n#links_weight_std = {5}\n#education_mean = {6}\n#education_std = {7}"
-        "\n#economic_mean = {8}\n#economic_std = {9}\n#stat = {11}".format(
+        "#n = {0}\n#target_k = {1}\n#c = {2}\n#d = {10}"
+        "\n#x_cor_max_min = {3}\n#y_cor_max_min = {4}\n#links_weight_std = {5}\n#education_mean = {6}"
+        "\n#education_std = {7}\n#economic_mean = {8}\n#economic_std = {9}\nmax_num_subscribers = {12}"
+        "\n#subscription_weight_max_uniform = {13}"
+        "\n#subscribers_inverse_distance_divide_by = {14}\n#stat = {11}".format(
             n, target_k, c, x_cor_max_min, y_cor_max_min, links_weight_std, education_mean, education_std,
-            economic_mean, economic_std, d, stats_val
+            economic_mean, economic_std, d, stats_val, max_num_subscribers, subscription_weight_max_uniform,
+            subscribers_inverse_distance_divide_by
         ))
 
     pass
