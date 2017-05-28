@@ -83,8 +83,8 @@ def using_permutation(n, target_k, c, d, x_cor_max_min, y_cor_max_min, links_wei
             "education": education,
             "economic": economic,
             "WHO": str(i),
-            "XCOR": np.round(np.random.uniform(-1 * x_cor_max_min, x_cor_max_min), 3),
-            "YCOR": np.round(np.random.uniform(-1 * y_cor_max_min, y_cor_max_min), 3),
+            "XCOR": np.round(np.random.uniform(-1.0 * x_cor_max_min, x_cor_max_min), 3),
+            "YCOR": np.round(np.random.uniform(-1.0 * y_cor_max_min, y_cor_max_min), 3),
         }
 
     edges = list(itertools.permutations(range(n), 2))
@@ -237,8 +237,8 @@ def add_four_news_provider_no_mds(G, max_num_subscribers, weight_max_uniform, in
 
         new_node_id = G.number_of_nodes()
         G.add_node(new_node_id, {
-            "education": -1, "economic": -1, "WHO": new_node_id, "color": "29",
-            "driver": 0, "provider": 1,
+            "education": -1.0, "economic": -1.0, "WHO": new_node_id, "color": "29",
+            "driver": 0, "provider": 1.0,
             "XCOR": xcor,
             "YCOR": ycor})
 
@@ -260,7 +260,7 @@ def add_four_news_provider_no_mds(G, max_num_subscribers, weight_max_uniform, in
             if 1 - distance <= 0.01:
                 bino = 0
             else:
-                bino = np.random.binomial(1, 1 - distance)
+                bino = np.random.binomial(1, 1.0 - distance)
 
             if bino == 1:
                 connected_driver_nodes.append(node)
@@ -274,9 +274,9 @@ def add_four_news_provider_no_mds(G, max_num_subscribers, weight_max_uniform, in
 
     pos = 9
     add_provider_and_link_to_subscriber(pos, pos, max_num_subscribers)
-    add_provider_and_link_to_subscriber(-1 * pos, pos, max_num_subscribers)
-    add_provider_and_link_to_subscriber(-1 * pos, -1 * pos, max_num_subscribers)
-    add_provider_and_link_to_subscriber(pos, -1 * pos, max_num_subscribers)
+    add_provider_and_link_to_subscriber(-1.0 * pos, pos, max_num_subscribers)
+    add_provider_and_link_to_subscriber(-1.0 * pos, -1.0 * pos, max_num_subscribers)
+    add_provider_and_link_to_subscriber(pos, -1.0 * pos, max_num_subscribers)
 
 
 def stats(G):
@@ -328,8 +328,8 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         n = int(sys.argv[1])
         target_k = float(sys.argv[2])
-        x_cor_max_min = int(sys.argv[3])
-        y_cor_max_min = int(sys.argv[4])
+        x_cor_max_min = float(sys.argv[3])
+        y_cor_max_min = float(sys.argv[4])
         links_weight_std = float(sys.argv[5])  # links weight between 0 0.2
         education_mean = float(sys.argv[6])
         education_std = float(sys.argv[7])
@@ -348,8 +348,8 @@ if __name__ == "__main__":
         n = 100
         target_k = 5.0
         # prob_cut_off = 0.940  #
-        x_cor_max_min = 6  # control location belief
-        y_cor_max_min = 6  # control location socio-econ belief etc
+        x_cor_max_min = 6.0  # control location belief
+        y_cor_max_min = 6.0  # control location socio-econ belief etc
         links_weight_std = 0.09  # links weight between 0 0.2
         education_mean = 1.5
         education_std = 0.55
@@ -406,7 +406,7 @@ if __name__ == "__main__":
         path,
         "#n = {0}\n#target_k = {1}\n#c = {2}\n#d = {10}"
         "\n#x_cor_max_min = {3}\n#y_cor_max_min = {4}\n#links_weight_std = {5}\n#education_mean = {6}"
-        "\n#education_std = {7}\n#economic_mean = {8}\n#economic_std = {9}\nmax_num_subscribers = {12}"
+        "\n#education_std = {7}\n#economic_mean = {8}\n#economic_std = {9}\n#max_num_subscribers = {12}"
         "\n#subscription_weight_max_uniform = {13}"
         "\n#subscribers_inverse_distance_divide_by = {14}\n#stat = {11}".format(
             n, target_k, c, x_cor_max_min, y_cor_max_min, links_weight_std, education_mean, education_std,
