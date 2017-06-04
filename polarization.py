@@ -179,7 +179,7 @@ def add_news_provider_connect_to_driver_nodes_in_their_quadrants(G, driver_node,
     pass
 
 
-def add_four_news_provider(G, mds, max_num_subscribers):
+def add_four_news_provider_to_mds(G, mds, max_num_subscribers):
     connected_driver_nodes = []
 
     def add_provider_and_link_to_subscriber(xcor, ycor, max_num_subs):
@@ -232,10 +232,12 @@ def add_four_news_provider(G, mds, max_num_subscribers):
 
 def add_four_news_provider_no_mds(G, max_num_subscribers, weight_max_uniform, inverse_distance_divide_by):
     connected_driver_nodes = []
+    added_providers_nodes = []
 
     def add_provider_and_link_to_subscriber(xcor, ycor, max_num_subs):
 
         new_node_id = G.number_of_nodes()
+        added_providers_nodes.append(new_node_id)
         G.add_node(new_node_id, {
             "education": -1.0, "economic": -1.0, "WHO": new_node_id, "color": "29",
             "driver": 0, "provider": 1.0,
@@ -248,6 +250,9 @@ def add_four_news_provider_no_mds(G, max_num_subscribers, weight_max_uniform, in
         nodes_shuffled = G.nodes()[:]
         random.shuffle(nodes_shuffled)
         for node in nodes_shuffled:
+            if node == new_node_id or node in added_providers_nodes:  # avoid self-link
+                continue
+
             if max_num_subs > 0 and len(connected_driver_nodes) >= max_num_subs:
                 return
 
@@ -279,14 +284,16 @@ def add_four_news_provider_no_mds(G, max_num_subscribers, weight_max_uniform, in
     add_provider_and_link_to_subscriber(pos, -1.0 * pos, max_num_subscribers)
 
 
-def add_fixed_providers_no_mds(G, max_num_subscribers, weight_max_uniform, inverse_distance_divide_by):
+def add_fixed_providers_no_mds(G, max_num_subscribers, weight_max_uniform, inverse_distance_factor):
     connected_driver_nodes = []
+    added_providers_nodes = []
 
     def add_provider_and_link_to_subscriber(xcor, ycor, max_num_subs):
 
         added_links = 0
 
         new_node_id = G.number_of_nodes()
+        added_providers_nodes.append(new_node_id)
         G.add_node(new_node_id, {
             "education": -1.0, "economic": -1.0, "WHO": new_node_id, "color": "29",
             "driver": 0, "provider": 1.0,
@@ -299,23 +306,33 @@ def add_fixed_providers_no_mds(G, max_num_subscribers, weight_max_uniform, inver
         nodes_shuffled = G.nodes()[:]
         random.shuffle(nodes_shuffled)
         for node in nodes_shuffled:
+            if node == new_node_id or node in added_providers_nodes:  # avoid self-link
+                continue
+
+            if node == new_node_id:  # avoid self-link
+                continue
             # if max_num_subs > 0 and len(connected_driver_nodes) >= max_num_subs:
             #     return
-            if max_num_subs > 0 and added_links >=  max_num_subs:
+            if max_num_subs > 0 and added_links >= max_num_subs:
                 return
 
             node_xcor = G.node[node]["XCOR"]
             node_ycor = G.node[node]["YCOR"]
 
-            distance = np.sqrt(
-                np.power(xcor - node_xcor, 2) + np.power(ycor - node_ycor, 2)) / inverse_distance_divide_by
+            # ;;;;;;;;;;;;;;; no need for randomness the nodes are already shuffled ;;;;;;
+            # distance = np.sqrt(
+            #     np.power(xcor - node_xcor, 2) + np.power(ycor - node_ycor, 2)) \
+            #            / inverse_distance_divide_by
+            #
+            # if 1 - distance <= 0.01:
+            #     bino = 0
+            # else:
+            #     bino = np.random.binomial(1, 1.0 - distance)
 
-            if 1 - distance <= 0.01:
-                bino = 0
-            else:
-                bino = np.random.binomial(1, 1.0 - distance)
+            distance = np.sqrt(np.power(xcor - node_xcor, 2) + np.power(ycor - node_ycor, 2))
 
-            if bino == 1:
+            # if bino == 1:
+            if distance <= inverse_distance_factor:
                 connected_driver_nodes.append(node)
                 G.add_edge(new_node_id, node,
                            weight=weight,
@@ -326,17 +343,17 @@ def add_fixed_providers_no_mds(G, max_num_subscribers, weight_max_uniform, inver
                 pass
         pass
 
-    add_provider_and_link_to_subscriber(3.2, 3.8, max_num_subscribers)  # cnn
-    add_provider_and_link_to_subscriber(8.7, 9.5, max_num_subscribers)  # cnn
+    add_provider_and_link_to_subscriber(4.2, 9.8, max_num_subscribers)  # cnn
+    add_provider_and_link_to_subscriber(9.7, 9.5, max_num_subscribers)  # cnn
 
-    add_provider_and_link_to_subscriber(-3.5, 4.1, max_num_subscribers) # bbc
-    add_provider_and_link_to_subscriber(-6.2, 7.7, max_num_subscribers)
+    add_provider_and_link_to_subscriber(-9.8, 9.7, max_num_subscribers)  # bbc
+    add_provider_and_link_to_subscriber(-8.8, 3.6, max_num_subscribers)
 
     add_provider_and_link_to_subscriber(-9.61, -9.92, max_num_subscribers)  # fox
-    add_provider_and_link_to_subscriber(-4.532, -7.8, max_num_subscribers)
+    add_provider_and_link_to_subscriber(-6.532, -8.8, max_num_subscribers)
 
-    add_provider_and_link_to_subscriber(6.2, -5.8, max_num_subscribers)
-    add_provider_and_link_to_subscriber(4.1, -7.5, max_num_subscribers)
+    add_provider_and_link_to_subscriber(9.8, -8.8, max_num_subscribers)
+    add_provider_and_link_to_subscriber(6.6, -9.5, max_num_subscribers)
 
 
 def stats(G):
@@ -401,7 +418,7 @@ if __name__ == "__main__":
         run_number = int(float(sys.argv[13]))
         max_num_subscribers = int(float(sys.argv[14]))
         subscription_weight_max_uniform = float(sys.argv[15])
-        subscribers_inverse_distance_divide_by = float(sys.argv[16])
+        subscribers_inverse_distance_factor = float(sys.argv[16])
         pass
 
     if debug is True:
@@ -420,7 +437,7 @@ if __name__ == "__main__":
         run_number = 10
         max_num_subscribers = 0
         subscription_weight_max_uniform = 0.3
-        subscribers_inverse_distance_divide_by = 9.0
+        subscribers_inverse_distance_factor = 9.0
         pass
 
     G = using_permutation(
@@ -447,13 +464,13 @@ if __name__ == "__main__":
     # add_four_news_provider_no_mds(
     #     G, max_num_subscribers=max_num_subscribers,
     #     weight_max_uniform=subscription_weight_max_uniform,
-    #     inverse_distance_divide_by=subscribers_inverse_distance_divide_by)
+    #     inverse_distance_divide_by=subscribers_inverse_distance_factor)
 
     # max_num_subscribers = 4
     add_fixed_providers_no_mds(
         G, max_num_subscribers=max_num_subscribers,
         weight_max_uniform=subscription_weight_max_uniform,
-        inverse_distance_divide_by=subscribers_inverse_distance_divide_by)
+        inverse_distance_factor=subscribers_inverse_distance_factor)
 
     i = 0
     while True:
@@ -474,10 +491,10 @@ if __name__ == "__main__":
         "\n#x_cor_max_min = {3}\n#y_cor_max_min = {4}\n#links_weight_std = {5}\n#education_mean = {6}"
         "\n#education_std = {7}\n#economic_mean = {8}\n#economic_std = {9}\n#max_num_subscribers = {12}"
         "\n#subscription_weight_max_uniform = {13}"
-        "\n#subscribers_inverse_distance_divide_by = {14}\n#stat = {11}".format(
+        "\n#subscribers_inverse_distance_factor = {14}\n#stat = {11}".format(
             n, target_k, c, x_cor_max_min, y_cor_max_min, links_weight_std, education_mean, education_std,
             economic_mean, economic_std, d, stats_val, max_num_subscribers, subscription_weight_max_uniform,
-            subscribers_inverse_distance_divide_by
+            subscribers_inverse_distance_factor
         ))
 
     pass
