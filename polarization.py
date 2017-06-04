@@ -167,7 +167,7 @@ def line_prepender(filename, line):
     pass
 
 
-def add_news_provider(G, driver_node, location_range):
+def add_news_provider_connect_to_driver_nodes_in_their_quadrants(G, driver_node, location_range):
     new_node_id = G.number_of_nodes()
     G.add_node(new_node_id, {
         "education": -1, "economic": -1, "WHO": new_node_id, "color": "29",
@@ -279,6 +279,66 @@ def add_four_news_provider_no_mds(G, max_num_subscribers, weight_max_uniform, in
     add_provider_and_link_to_subscriber(pos, -1.0 * pos, max_num_subscribers)
 
 
+def add_fixed_providers_no_mds(G, max_num_subscribers, weight_max_uniform, inverse_distance_divide_by):
+    connected_driver_nodes = []
+
+    def add_provider_and_link_to_subscriber(xcor, ycor, max_num_subs):
+
+        added_links = 0
+
+        new_node_id = G.number_of_nodes()
+        G.add_node(new_node_id, {
+            "education": -1.0, "economic": -1.0, "WHO": new_node_id, "color": "29",
+            "driver": 0, "provider": 1.0,
+            "XCOR": xcor,
+            "YCOR": ycor})
+
+        # weight = np.absolute(np.round(np.random.normal(0, weight_std), 3))
+        weight = np.round(np.random.uniform(0.1, weight_max_uniform), 3)
+
+        nodes_shuffled = G.nodes()[:]
+        random.shuffle(nodes_shuffled)
+        for node in nodes_shuffled:
+            # if max_num_subs > 0 and len(connected_driver_nodes) >= max_num_subs:
+            #     return
+            if max_num_subs > 0 and added_links >=  max_num_subs:
+                return
+
+            node_xcor = G.node[node]["XCOR"]
+            node_ycor = G.node[node]["YCOR"]
+
+            distance = np.sqrt(
+                np.power(xcor - node_xcor, 2) + np.power(ycor - node_ycor, 2)) / inverse_distance_divide_by
+
+            if 1 - distance <= 0.01:
+                bino = 0
+            else:
+                bino = np.random.binomial(1, 1.0 - distance)
+
+            if bino == 1:
+                connected_driver_nodes.append(node)
+                G.add_edge(new_node_id, node,
+                           weight=weight,
+                           label=weight,
+                           color="9.9"  # white
+                           )
+                added_links += 1
+                pass
+        pass
+
+    add_provider_and_link_to_subscriber(3.2, 3.8, max_num_subscribers)  # cnn
+    add_provider_and_link_to_subscriber(8.7, 9.5, max_num_subscribers)  # cnn
+
+    add_provider_and_link_to_subscriber(-3.5, 4.1, max_num_subscribers) # bbc
+    add_provider_and_link_to_subscriber(-6.2, 7.7, max_num_subscribers)
+
+    add_provider_and_link_to_subscriber(-9.61, -9.92, max_num_subscribers)  # fox
+    add_provider_and_link_to_subscriber(-4.532, -7.8, max_num_subscribers)
+
+    add_provider_and_link_to_subscriber(6.2, -5.8, max_num_subscribers)
+    add_provider_and_link_to_subscriber(4.1, -7.5, max_num_subscribers)
+
+
 def stats(G):
     result = ""
     check_cutoff = 2.5
@@ -384,7 +444,13 @@ if __name__ == "__main__":
         # add_news_provider(G, mds, location_range=-7)
         G.node[driver_node]["driver"] = 1
 
-    add_four_news_provider_no_mds(
+    # add_four_news_provider_no_mds(
+    #     G, max_num_subscribers=max_num_subscribers,
+    #     weight_max_uniform=subscription_weight_max_uniform,
+    #     inverse_distance_divide_by=subscribers_inverse_distance_divide_by)
+
+    # max_num_subscribers = 4
+    add_fixed_providers_no_mds(
         G, max_num_subscribers=max_num_subscribers,
         weight_max_uniform=subscription_weight_max_uniform,
         inverse_distance_divide_by=subscribers_inverse_distance_divide_by)
