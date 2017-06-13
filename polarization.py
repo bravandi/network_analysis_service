@@ -1,3 +1,5 @@
+from pandas import *
+import math
 import numpy as np
 import networkx as nx
 import random
@@ -13,11 +15,13 @@ def fx_old(a, b, h=0, c=0, d=0):
     c = 0.3
     d = 1
 
-    func_val = (c / d) * (1 - np.exp(
-        1 / (-1 * h * np.absolute(3 - ((a + b) / 2))))) * \
-               (1 / (c + np.absolute(a - b)))
+    # func_val = (c / d) * (1 - np.exp(
+    #     1 / (-1 * h * np.absolute(3 - ((a + b) / 2))))) * \
+    #            (1 / (c + np.absolute(a - b)))
 
-    uni = np.random.uniform(0, 1.0 / func_val)
+    func_val = (c / (c + ((a - b) ^ 2)))
+
+    # uni = np.random.uniform(0, 1.0 / func_val)
     bin = np.random.binomial(1, func_val)
     if bin == 1:
         return True
@@ -64,27 +68,59 @@ def using_permutation(n, target_k, c, d, x_cor_max_min, y_cor_max_min, links_wei
         G.add_node(i)
 
         def generate_education_economic(mean, std):
-            val = np.round(np.random.normal(mean, std), 3)
-            if val < 0:
-                return generate_education_economic(mean, std)
-            if val > 3:
-                val = 2.999
+            val = np.round(np.random.uniform(-2, 2), 3)
+            # if val < 0:
+            #     return generate_education_economic(mean, std)
+            # if val > 3:
+            #     val = 2.999
             return val
             pass
 
         education = generate_education_economic(education_mean, education_std)
         economic = generate_education_economic(economic_mean, economic_std)
+        xsign = 1
+        ysign = 1
+        if education < 0:
+            xsign = -1
+        if economic < 0:
+            ysign = -1
+
+        x_cor_min = 0
+        x_cor_max = x_cor_max_min
+
+        y_cor_min = 0
+        y_cor_max = y_cor_max_min
+
+        if np.absolute(education) < 1:
+            x_cor_max = x_cor_max_min / 2.0
+            pass
+        else:
+            x_cor_min = x_cor_max_min / 2.0
+            pass
+
+        if np.absolute(economic) < 1:
+            y_cor_max = y_cor_max_min / 2.0
+            pass
+        else:
+            y_cor_min = y_cor_max_min / 2.0
+            pass
+
+        xcor = np.round(np.random.uniform(x_cor_min, x_cor_max), 3) * xsign
+        ycor = np.round(np.random.uniform(y_cor_min, y_cor_max), 3) * ysign
+
         G.node[i] = {
             # "education": np.random.uniform(0, 3.01),
             # "economic": np.random.uniform(0, 3),
             "color": 105,  # blue
-            "driver": 0,
+            "driver": -1,
             "provider": 0,
             "education": education,
             "economic": economic,
             "WHO": str(i),
-            "XCOR": np.round(np.random.uniform(-1.0 * x_cor_max_min, x_cor_max_min), 3),
-            "YCOR": np.round(np.random.uniform(-1.0 * y_cor_max_min, y_cor_max_min), 3),
+            "XCOR": xcor,
+            "YCOR": ycor
+            # "XCOR": np.round(np.random.uniform(-1.0 * x_cor_max_min, x_cor_max_min), 3),
+            # "YCOR": np.round(np.random.uniform(-1.0 * y_cor_max_min, y_cor_max_min), 3),
         }
 
     edges = list(itertools.permutations(range(n), 2))
@@ -171,7 +207,7 @@ def add_news_provider_connect_to_driver_nodes_in_their_quadrants(G, driver_node,
     new_node_id = G.number_of_nodes()
     G.add_node(new_node_id, {
         "education": -1, "economic": -1, "WHO": new_node_id, "color": "29",
-        "driver": 0, "provider": 1,
+        "driver": -1, "provider": 1,
         "XCOR": np.random.uniform(location_range, -1 * location_range),
         "YCOR": np.random.uniform(location_range, location_range + 1)})
     weight = round(np.random.uniform(0.4, 0.9), 3)
@@ -186,7 +222,7 @@ def add_four_news_provider_to_mds(G, mds, max_num_subscribers):
         new_node_id = G.number_of_nodes()
         G.add_node(new_node_id, {
             "education": -1, "economic": -1, "WHO": new_node_id, "color": "29",
-            "driver": 0, "provider": 1,
+            "driver": -1, "provider": 1,
             "XCOR": xcor,
             "YCOR": ycor})
 
@@ -240,7 +276,7 @@ def add_four_news_provider_no_mds(G, max_num_subscribers, weight_max_uniform, in
         added_providers_nodes.append(new_node_id)
         G.add_node(new_node_id, {
             "education": -1.0, "economic": -1.0, "WHO": new_node_id, "color": "29",
-            "driver": 0, "provider": 1.0,
+            "driver": -1, "provider": 1.0,
             "XCOR": xcor,
             "YCOR": ycor})
 
@@ -296,7 +332,7 @@ def add_fixed_providers_no_mds(G, max_num_subscribers, weight_max_uniform, inver
         added_providers_nodes.append(new_node_id)
         G.add_node(new_node_id, {
             "education": -1.0, "economic": -1.0, "WHO": new_node_id, "color": "29",
-            "driver": 0, "provider": 1.0,
+            "driver": -1, "provider": 1.0,
             "XCOR": xcor,
             "YCOR": ycor})
 
@@ -374,7 +410,11 @@ def stats(G):
         ppl_edu.append(G.node[node]["education"])
         pass
 
-    result += "ppl edu > 2.5 = {} ".format(len([q for q in ppl_edu if q > 2.5]))
+    count_nodes_with_no_link = len([val for val in G.degree().values() if val == 0])
+
+    result += "$no-link-nodes-count = {} $count-ppl-edu > 2.5 = {} ".format(
+        count_nodes_with_no_link,
+        len([q for q in ppl_edu if q > 2.5]))
 
     edu_diffs = []
     econ_diffs = []
@@ -400,6 +440,48 @@ def stats(G):
     return result
 
 
+def homophily_matrix(G, lbl, save_p):
+    levels = 3
+
+    nums = [[0 for x in range(levels)] for y in range(levels)]
+
+    for edge in G.edges():
+        from_edu = G.node[edge[0]][lbl]
+        to_edu = G.node[edge[1]][lbl]
+
+        # i = int((math.floor((from_edu - 0.00000001) * 10) / 10) * 10)
+        # j = int((math.floor((to_edu - 0.00000001) * 10) / 10) * 10)
+        if from_edu <= -0.66:
+            i = 0
+        elif from_edu > -0.66 and from_edu <= 0.66:
+            i = 1
+        elif from_edu > 0.66:
+            i = 2
+        else:
+            raise Exception("cant be here for i")
+
+        if to_edu <= -0.66:
+            j = 0
+        elif to_edu > -0.66 and to_edu <= 0.66:
+            j = 1
+        elif to_edu > 0.66:
+            j = 2
+        else:
+            raise Exception("cant be here for i")
+
+        nums[i][j] += 1
+
+        pass
+
+    df = DataFrame(nums)
+    # df.rename(columns=lambda x: x * 0.1, inplace=True)
+    # df.rename(dict(zip(df.index.tolist(), [round(x * 0.1, 1) for x in df.index.tolist()])), inplace=True)
+
+    df.to_csv(save_p)
+
+    pass
+
+
 if __name__ == "__main__":
     debug = True
     if len(sys.argv) > 2:
@@ -422,17 +504,17 @@ if __name__ == "__main__":
         pass
 
     if debug is True:
-        n = 100
+        n = 200
         target_k = 5.0
         # prob_cut_off = 0.940  #
-        x_cor_max_min = 6.0  # control location belief
-        y_cor_max_min = 6.0  # control location socio-econ belief etc
+        x_cor_max_min = 6.5  # control location belief
+        y_cor_max_min = 6.5  # control location socio-econ belief etc
         links_weight_std = 0.09  # links weight between 0 0.2
         education_mean = 1.5
         education_std = 0.55
         economic_mean = 1.5
         economic_std = 0.55  # the smaller the less economic
-        c = 1
+        c = 0.1
         d = 1
         run_number = 10
         max_num_subscribers = 0
@@ -446,9 +528,12 @@ if __name__ == "__main__":
         links_weight_std=links_weight_std, education_mean=education_mean, education_std=education_std,
         economic_mean=economic_mean, economic_std=economic_std)
 
-    mds = GeneralTools.identify_driver_nodes(
-        networkx_digraph=G, root_folder_work="pol", debug=False, draw_graphs=False,
-        show_plots=False, network_id=1)
+    # mds = GeneralTools.identify_driver_nodes(
+    #     networkx_digraph=G, root_folder_work="pol", debug=False, draw_graphs=False,
+    #     show_plots=False, network_id=1)
+
+    homophily_matrix(G, "education", "d:\\temp\\education.csv")
+    homophily_matrix(G, "economic", "d:\\temp\\economic.csv")
 
     stats_val = stats(G)
     # tools.clipboard_copy(stats_val)
@@ -457,9 +542,9 @@ if __name__ == "__main__":
         pass
     # n target_k x_cor_max_min y_cor_max_min links_weight_std education_mean education_std economic_mean economic_std c d debug run_number
     # 100 5 6 6 0.09 1.5 0.55 1.5 0.55 0.5 1.0 1 10
-    for driver_node in mds:
-        # add_news_provider(G, mds, location_range=-7)
-        G.node[driver_node]["driver"] = 1
+    # for driver_node in mds:
+    #     # add_news_provider(G, mds, location_range=-7)
+    #     G.node[driver_node]["driver"] = 1
 
     # add_four_news_provider_no_mds(
     #     G, max_num_subscribers=max_num_subscribers,
