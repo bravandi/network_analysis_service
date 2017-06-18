@@ -1103,6 +1103,54 @@ class RandomGraphs:
         )
 
 
+class JiaCpp:
+    def __init__(self):
+        self.G = nx.DiGraph()
+
+        pass
+
+    def load_graph(self, path):
+        nodes_path = path + "_nodes.txt"
+        links_path = path + "_links.txt"
+
+        with open(nodes_path, "r") as f:
+            for line in f:
+                if line.startswith("#"):
+                    continue
+
+                parts = line.split(' ')
+
+                aug_path_split = parts[3].split(',')[:-1]
+                if len(aug_path_split) == 1:
+                    aug_path = []
+                else:
+                    aug_path = [int(node) for node in parts[3].split(',')[:-1]]
+
+                self.G.add_node(int(parts[0]), {
+                    "matched": int(parts[1]),
+                    "control": int(parts[2]),
+                    "aug_path": aug_path
+                })
+            pass
+
+        with open(links_path, "r") as f:
+            for line in f:
+                if line.startswith("#"):
+                    continue
+
+                parts = line.split(' ')
+
+                self.G.add_edge(int(parts[0]), int(parts[1]), {
+                    "is_matched": int(parts[2])
+                })
+
+            pass
+
+        print(self.G)
+
+        pass
+
+
 if __name__ == '__main__':
     start_time = datetime.now()
     print ("started: " + str(start_time) + "\n;;;;;;;;;;;;;;")
@@ -1112,13 +1160,16 @@ if __name__ == '__main__':
     # GeneralTools.identify_node_type_given_path(
     #     "D:\\Temp\\scale_free_bimodal\\scale_free_k_14_n_1000_lambda_out_2.67_lambda_in_3.0_.gml"
     # )
-    path = "D:\\Temp\\scale_free\\"
+    path = "D:\\Temp\\jia\\"
     # path +=  "n_5000_alpha_0.08_beta_0.5_gamma_0.42_deltaIn_0.0_deltaOut_0.2.gml"
     # path += "n_5000_alpha_0.41_beta_0.54_gamma_0.05_deltaIn_0.2_deltaOut_0.gml"
     # path += "n_10000_alpha_0.08_beta_0.5_gamma_0.42_deltaIn_0.0_deltaOut_0.2.gml"
-    path += "n_100000_alpha_0.08_beta_0.5_gamma_0.42_deltaIn_0.0_deltaOut_0.2.gml"
+    # path += "n_100000_alpha_0.08_beta_0.5_gamma_0.42_deltaIn_0.0_deltaOut_0.2.gml"
+    path += "erdos_renyi_n_4_k_8_nodes.txt"
 
-    load_network_from_text(path="d:\\temp\\nr_kav_nm_SF_0.5_0.54_1000.txt")
+    # load_network_from_text(path=path)
+    j = JiaCpp()
+    j.load_graph(path="D:\\Temp\\jia\\debug")
 
     # GeneralTools.identify_node_type_given_path(path=path)
 
