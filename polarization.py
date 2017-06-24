@@ -56,6 +56,21 @@ def fx(edu1, edu2, econ1, econ2, c, d):
 
 def using_permutation(n, target_k, c, d, x_cor_max_min, y_cor_max_min, links_weight_std,
                       education_mean, education_std, economic_mean, economic_std):
+    def position_news_consumer(economic_level, edu_level):
+        # return xcor, ycor
+        # XCOR: edu_level is attr-var ---map-to---> social-belief is state-var
+        # YCOR: socio_econ_level is attr-var ---map-to---> fiscal-view is state-var
+
+        if economic_level > 0 and edu_level > 0:
+            return np.random.uniform(0, x_cor_max_min), np.random.uniform(0, y_cor_max_min)
+        elif economic_level < 0 and edu_level > 0:
+            return np.random.uniform(0, 1 * x_cor_max_min), np.random.uniform(0, -1 * y_cor_max_min)
+        elif economic_level < 0 and edu_level < 0:
+            return np.random.uniform(0, -1 * x_cor_max_min), np.random.uniform(0, -1 * y_cor_max_min)
+        else:
+            return np.random.uniform(0, -1 * x_cor_max_min), np.random.uniform(0, 1 * y_cor_max_min)
+        pass
+
     G = nx.DiGraph()
 
     if education_std < 0.4 or economic_std < 0.4 or links_weight_std < 0.4:
@@ -66,17 +81,30 @@ def using_permutation(n, target_k, c, d, x_cor_max_min, y_cor_max_min, links_wei
         G.add_node(i)
 
         def generate_education_economic(mean, std):
-            # val = np.round(np.random.normal(mean, std), 3)
-            val = np.round(np.random.uniform(0, 3), 3)
-            if val < 0:
-                return generate_education_economic(mean, std)
-            if val > 3:
-                val = 2.999
-            return val
+            return np.round(np.random.uniform(-2, 2), 3), \
+                   np.round(np.random.uniform(-2, 2), 3)
+
+            mean = np.random.choice([-1, 1], p=[0.5, 0.5])
+            std = 0.7
+            val1 = np.round(np.random.normal(mean, std), 3)
+            val2 = np.round(np.random.normal(mean, std), 3)
+            # val = np.round(np.random.uniform(-2, 2), 3)
+            if val1 < -2:
+                val1 = -2
+            if val1 > 2:
+                val1 = 2
+            if val2 < -2:
+                val2 = -2
+            if val2 > 2:
+                val2 = 2
+            return val1, val2
             pass
 
-        education = generate_education_economic(education_mean, education_std)
-        economic = generate_education_economic(economic_mean, economic_std)
+        # education = generate_education_economic(education_mean, education_std)
+        # economic = generate_education_economic(economic_mean, economic_std)
+        education, economic = generate_education_economic(education_mean, education_std)
+
+        xcor, ycor = position_news_consumer(economic, education)
 
         G.node[i] = {
             # "education": np.random.uniform(0, 3.01),
@@ -89,8 +117,8 @@ def using_permutation(n, target_k, c, d, x_cor_max_min, y_cor_max_min, links_wei
             "education": education,
             "economic": economic,
             "WHO": str(i),
-            "XCOR": np.round(np.random.uniform(-1.0 * x_cor_max_min, x_cor_max_min), 3),
-            "YCOR": np.round(np.random.uniform(-1.0 * y_cor_max_min, y_cor_max_min), 3),
+            "XCOR": xcor,  # np.round(np.random.uniform(-1.0 * x_cor_max_min, x_cor_max_min), 3),
+            "YCOR": ycor,  # np.round(np.random.uniform(-1.0 * y_cor_max_min, y_cor_max_min), 3),
         }
 
     edges = list(itertools.permutations(range(n), 2))
@@ -434,6 +462,74 @@ def homophily_matrix(G, lbl, save_p):
     pass
 
 
+def homophily_matrix_combined(G, save_p):
+    def assign_group(val):
+        if val > 0.67:
+            return 2
+        elif val < -0.67:
+            return 0
+        else:
+            return 1
+        pass
+
+    def assign_combined_group(from_edu, to_edu, from_econ, to_econ):
+        def combinations(edu_group, econ_group):
+            i = -1
+            if edu_group == 0 and econ_group == 0:
+                i = 0
+            elif edu_group == 0 and econ_group == 1:
+                i = 1
+            elif edu_group == 0 and econ_group == 2:
+                i = 2
+            elif edu_group == 1 and econ_group == 0:
+                i = 3
+            elif edu_group == 1 and econ_group == 1:
+                i = 4
+            elif edu_group == 1 and econ_group == 2:
+                i = 5
+            elif edu_group == 2 and econ_group == 0:
+                i = 6
+            elif edu_group == 2 and econ_group == 1:
+                i = 7
+            elif edu_group == 2 and econ_group == 2:
+                i = 8
+
+            return i
+            pass
+
+        i = combinations(
+            edu_group=assign_group(from_edu),
+            econ_group=assign_group(from_econ))
+        j = combinations(
+            edu_group=assign_group(to_edu),
+            econ_group=assign_group(to_econ))
+
+        return i, j
+        pass
+
+    nums = [[0 for x in range(9)] for y in range(9)]
+
+    for edge in G.edges():
+        i, j = assign_combined_group(
+            from_edu=G.node[edge[0]]["education"],
+            to_edu=G.node[edge[1]]["education"],
+            from_econ=G.node[edge[0]]["economic"],
+            to_econ=G.node[edge[1]]["economic"]
+        )
+
+        nums[i][j] += 1
+
+        pass
+
+    df = DataFrame(nums)
+    # df.rename(columns=lambda x: x * 0.1, inplace=True)
+    # df.rename(dict(zip(df.index.tolist(), [round(x * 0.1, 1) for x in df.index.tolist()])), inplace=True)
+
+    df.to_csv(save_p)
+
+    pass
+
+
 if __name__ == "__main__":
     debug = True
     if len(sys.argv) > 2:
@@ -466,7 +562,7 @@ if __name__ == "__main__":
         education_std = 0.55
         economic_mean = 1.5
         economic_std = 0.55  # the smaller the less economic
-        c = 0.2
+        c = 0.17
         d = 1
         run_number = 0
         max_num_subscribers = 4
@@ -484,8 +580,7 @@ if __name__ == "__main__":
     #     networkx_digraph=G, root_folder_work="pol", debug=False, draw_graphs=False,
     #     show_plots=False, network_id=1)
 
-    homophily_matrix(G, "education", "d:\\temp\\education.csv")
-    homophily_matrix(G, "economic", "d:\\temp\\economic.csv")
+    homophily_matrix_combined(G, "d:\\temp\\homophily_matrix.csv")
 
     stats_val = stats(G)
     # tools.clipboard_copy(stats_val)
