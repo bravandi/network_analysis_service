@@ -34,13 +34,17 @@ def fx(edu1, edu2, econ1, econ2, c, d):
     # d = 1
 
     def f(a, b):
-        return (1.0 / d) * (
-            (c / (c + 3.0)) + (np.absolute(a + b) / 6.0) * (
-                (c / (c + np.abs(a - b))) - (c / (c + 3.0)))
-        )
+        return c / (c + np.power(a - b, 2))
+
+    # def f(a, b):
+    #     return (1.0 / d) * (
+    #         (c / (c + 3.0)) + (np.absolute(a + b) / 6.0) * (
+    #             (c / (c + np.abs(a - b))) - (c / (c + 3.0)))
+    #     )
 
     eco_dif = np.abs(econ1 - econ2)
     edu_dif = np.abs(edu1 - edu2)
+
     f_tot = f(edu1, edu2) * f(econ1, econ2)
     if f_tot > 1:
         f_tot = 1
@@ -81,23 +85,24 @@ def using_permutation(n, target_k, c, d, x_cor_max_min, y_cor_max_min, links_wei
         G.add_node(i)
 
         def generate_education_economic(mean, std):
-            return np.round(np.random.uniform(-2, 2), 3), \
-                   np.round(np.random.uniform(-2, 2), 3)
+            # return np.round(np.random.uniform(-2, 2), 3), \
+            #        np.round(np.random.uniform(-2, 2), 3)
 
             mean = np.random.choice([-1, 1], p=[0.5, 0.5])
             std = 0.7
-            val1 = np.round(np.random.normal(mean, std), 3)
-            val2 = np.round(np.random.normal(mean, std), 3)
+            # edu_val = np.round(np.random.normal(mean, std), 3)
+            edu_val = np.round(np.random.uniform(-2, 2), 3)
+            econ_val = np.round(np.random.normal(edu_val, 0), 3)
             # val = np.round(np.random.uniform(-2, 2), 3)
-            if val1 < -2:
-                val1 = -2
-            if val1 > 2:
-                val1 = 2
-            if val2 < -2:
-                val2 = -2
-            if val2 > 2:
-                val2 = 2
-            return val1, val2
+            if edu_val < -2:
+                edu_val = -2
+            if edu_val > 2:
+                edu_val = 2
+            if econ_val < -2:
+                econ_val = -2
+            if econ_val > 2:
+                econ_val = 2
+            return edu_val, econ_val
             pass
 
         # education = generate_education_economic(education_mean, education_std)
@@ -123,18 +128,18 @@ def using_permutation(n, target_k, c, d, x_cor_max_min, y_cor_max_min, links_wei
 
     edges = list(itertools.permutations(range(n), 2))
     random.shuffle(edges)
-    edges_lenght = len(edges)
+    edges_length = len(edges)
 
     # for edge in edges:
     while True:
         if (2.0 * G.number_of_edges()) / n >= target_k:
             break
 
-        if edges_lenght == 0:
+        if edges_length == 0:
             break
 
         edge = edges.pop()
-        edges_lenght -= 1
+        edges_length -= 1
         n1 = edge[0]
         n2 = edge[1]
 
