@@ -75,6 +75,27 @@ def using_permutation(n, target_k, c, d, x_cor_max_min, y_cor_max_min, links_wei
             return np.random.uniform(0, -1 * x_cor_max_min), np.random.uniform(0, 1 * y_cor_max_min)
         pass
 
+    def generate_education_economic(mean, std):
+        # return np.round(np.random.uniform(-2, 2), 3), \
+        #        np.round(np.random.uniform(-2, 2), 3)
+
+        mean = np.random.choice([-1, 1], p=[0.5, 0.5])
+        std = 0.7
+        # edu_val = np.round(np.random.normal(mean, std), 3)
+        edu_val = np.round(np.random.uniform(-2, 2), 3)
+        econ_val = np.round(np.random.normal(edu_val, 0.5), 3)
+        # econ_val = np.round(np.random.uniform(-2, 2), 3)
+        if edu_val < -2:
+            edu_val = -2
+        if edu_val > 2:
+            edu_val = 2
+        if econ_val < -2:
+            econ_val = -2
+        if econ_val > 2:
+            econ_val = 2
+        return edu_val, econ_val
+        pass
+
     G = nx.DiGraph()
 
     if education_std < 0.4 or economic_std < 0.4 or links_weight_std < 0.4:
@@ -83,27 +104,6 @@ def using_permutation(n, target_k, c, d, x_cor_max_min, y_cor_max_min, links_wei
 
     for i in range(0, n):
         G.add_node(i)
-
-        def generate_education_economic(mean, std):
-            # return np.round(np.random.uniform(-2, 2), 3), \
-            #        np.round(np.random.uniform(-2, 2), 3)
-
-            mean = np.random.choice([-1, 1], p=[0.5, 0.5])
-            std = 0.7
-            # edu_val = np.round(np.random.normal(mean, std), 3)
-            edu_val = np.round(np.random.uniform(-2, 2), 3)
-            econ_val = np.round(np.random.normal(edu_val, 0), 3)
-            # val = np.round(np.random.uniform(-2, 2), 3)
-            if edu_val < -2:
-                edu_val = -2
-            if edu_val > 2:
-                edu_val = 2
-            if econ_val < -2:
-                econ_val = -2
-            if econ_val > 2:
-                econ_val = 2
-            return edu_val, econ_val
-            pass
 
         # education = generate_education_economic(education_mean, education_std)
         # economic = generate_education_economic(economic_mean, economic_std)
@@ -567,7 +567,7 @@ if __name__ == "__main__":
         education_std = 0.55
         economic_mean = 1.5
         economic_std = 0.55  # the smaller the less economic
-        c = 0.17
+        c = 3
         d = 1
         run_number = 0
         max_num_subscribers = 4
