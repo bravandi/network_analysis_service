@@ -59,7 +59,7 @@ def fx(edu1, edu2, econ1, econ2, c, d):
 
 
 def using_permutation(n, target_k, c, d, x_cor_max_min, y_cor_max_min, links_weight_std,
-                      education_mean, education_std, economic_mean, economic_std):
+                      education_mean, education_std, economic_mean, economic_std, edu_econ_correlation):
     def position_news_consumer(economic_level, edu_level):
         # return xcor, ycor
         # XCOR: edu_level is attr-var ---map-to---> social-belief is state-var
@@ -75,16 +75,22 @@ def using_permutation(n, target_k, c, d, x_cor_max_min, y_cor_max_min, links_wei
             return np.random.uniform(0, -1 * x_cor_max_min), np.random.uniform(0, 1 * y_cor_max_min)
         pass
 
-    def generate_education_economic(mean, std):
+    def generate_education_economic(mean, std, edu_econ_correlation_val):
         # return np.round(np.random.uniform(-2, 2), 3), \
         #        np.round(np.random.uniform(-2, 2), 3)
 
         mean = np.random.choice([-1, 1], p=[0.5, 0.5])
         std = 0.7
         # edu_val = np.round(np.random.normal(mean, std), 3)
+
         edu_val = np.round(np.random.uniform(-2, 2), 3)
-        econ_val = np.round(np.random.normal(edu_val, 0.5), 3)
-        # econ_val = np.round(np.random.uniform(-2, 2), 3)
+
+        if edu_econ_correlation_val == 0:
+            econ_val = np.round(np.random.uniform(-2, 2), 3)
+        else:
+            econ_val = np.round(np.random.normal(edu_val, edu_econ_correlation_val), 3)
+            pass
+
         if edu_val < -2:
             edu_val = -2
         if edu_val > 2:
@@ -105,9 +111,9 @@ def using_permutation(n, target_k, c, d, x_cor_max_min, y_cor_max_min, links_wei
     for i in range(0, n):
         G.add_node(i)
 
-        # education = generate_education_economic(education_mean, education_std)
-        # economic = generate_education_economic(economic_mean, economic_std)
-        education, economic = generate_education_economic(education_mean, education_std)
+        education, economic = generate_education_economic(mean=education_mean,
+                                                          std=education_std,
+                                                          edu_econ_correlation_val=edu_econ_correlation)
 
         xcor, ycor = position_news_consumer(economic, education)
 
@@ -118,12 +124,12 @@ def using_permutation(n, target_k, c, d, x_cor_max_min, y_cor_max_min, links_wei
             "color": 105,  # blue
             "driver": -1,
             # if decided to envolve driver nodes make it 0 and uncommend the mds file in the main function
-            "provider": 0,
-            "education": education,
-            "economic": economic,
+            "isProvider": 0,
+            "education": round(education, 5),
+            "economic": round(economic, 5),
             "WHO": str(i),
-            "XCOR": xcor,  # np.round(np.random.uniform(-1.0 * x_cor_max_min, x_cor_max_min), 3),
-            "YCOR": ycor,  # np.round(np.random.uniform(-1.0 * y_cor_max_min, y_cor_max_min), 3),
+            "XCOR": round(xcor, 5),  # np.round(np.random.uniform(-1.0 * x_cor_max_min, x_cor_max_min), 3),
+            "YCOR": round(ycor, 5),  # np.round(np.random.uniform(-1.0 * y_cor_max_min, y_cor_max_min), 3),
         }
 
     edges = list(itertools.permutations(range(n), 2))
@@ -210,7 +216,7 @@ def add_news_provider_connect_to_driver_nodes_in_their_quadrants(G, driver_node,
     new_node_id = G.number_of_nodes()
     G.add_node(new_node_id, {
         "education": -1, "economic": -1, "WHO": new_node_id, "color": "29",
-        "driver": 0, "provider": 1,
+        "driver": 0, "isProvider": 1,
         "XCOR": np.random.uniform(location_range, -1 * location_range),
         "YCOR": np.random.uniform(location_range, location_range + 1)})
     weight = round(np.random.uniform(0.4, 0.9), 3)
@@ -225,7 +231,7 @@ def add_four_news_provider_to_mds(G, mds, max_num_subscribers):
         new_node_id = G.number_of_nodes()
         G.add_node(new_node_id, {
             "education": -1, "economic": -1, "WHO": new_node_id, "color": "29",
-            "driver": 0, "provider": 1,
+            "driver": 0, "isProvider": 1,
             "XCOR": xcor,
             "YCOR": ycor})
 
@@ -279,7 +285,7 @@ def add_four_news_provider_no_mds(G, max_num_subscribers, weight_max_uniform, in
         added_providers_nodes.append(new_node_id)
         G.add_node(new_node_id, {
             "education": -1.0, "economic": -1.0, "WHO": new_node_id, "color": "29",
-            "driver": 0, "provider": 1.0,
+            "driver": 0, "isProvider": 1.0,
             "XCOR": xcor,
             "YCOR": ycor})
 
@@ -335,7 +341,7 @@ def add_fixed_providers_no_mds(G, max_num_subscribers, weight_max_uniform, inver
         added_providers_nodes.append(new_node_id)
         G.add_node(new_node_id, {
             "education": -1.0, "economic": -1.0, "WHO": new_node_id, "color": "29",
-            "driver": 0, "provider": 1.0,
+            "driver": 0, "isProvider": 1.0,
             # "colourList": "",
             "XCOR": xcor,
             "YCOR": ycor})
@@ -554,6 +560,7 @@ if __name__ == "__main__":
         max_num_subscribers = int(float(sys.argv[14]))
         subscription_weight_max_uniform = float(sys.argv[15])
         subscribers_inverse_distance_factor = float(sys.argv[16])
+        edu_econ_correlation = float(sys.argv[17])
         pass
 
     if debug is True:
@@ -573,13 +580,14 @@ if __name__ == "__main__":
         max_num_subscribers = 4
         subscription_weight_max_uniform = 0.3
         subscribers_inverse_distance_factor = 9.0
+        edu_econ_correlation = 0.5
         pass
 
     G = using_permutation(
         n=n, target_k=target_k,
         c=c, d=d, x_cor_max_min=x_cor_max_min, y_cor_max_min=y_cor_max_min,
         links_weight_std=links_weight_std, education_mean=education_mean, education_std=education_std,
-        economic_mean=economic_mean, economic_std=economic_std)
+        economic_mean=economic_mean, economic_std=economic_std, edu_econ_correlation=edu_econ_correlation)
 
     # mds = GeneralTools.identify_driver_nodes(
     #     networkx_digraph=G, root_folder_work="pol", debug=False, draw_graphs=False,
