@@ -4,28 +4,8 @@ import numpy as np
 import networkx as nx
 import random
 import itertools
-from complex_networks.general_tools import GeneralTools
-import complex_networks.tools as tools
 import sys
 import os.path
-
-
-def fx_old(a, b, h=0, c=0, d=0):
-    h = 5
-    c = 0.3
-    d = 1
-
-    func_val = (c / d) * (1 - np.exp(
-        1 / (-1 * h * np.absolute(3 - ((a + b) / 2))))) * \
-               (1 / (c + np.absolute(a - b)))
-
-    uni = np.random.uniform(0, 1.0 / func_val)
-    bin = np.random.binomial(1, func_val)
-    if bin == 1:
-        return True
-    else:
-        return False
-    pass
 
 
 def fx(edu1, edu2, econ1, econ2, c, d):
@@ -121,15 +101,15 @@ def using_permutation(n, target_k, c, d, x_cor_max_min, y_cor_max_min, links_wei
             # "education": np.random.uniform(0, 3.01),
             # "economic": np.random.uniform(0, 3),
             # "colourList": "9830400,220",
-            "color": 105,  # blue
-            "driver": -1,
+            "color": "105",  # blue
+            "driver": "-1.0",
             # if decided to envolve driver nodes make it 0 and uncommend the mds file in the main function
-            "isProvider": 0,
-            "education": round(education, 5),
-            "economic": round(economic, 5),
-            "WHO": str(i),
-            "XCOR": round(xcor, 5),  # np.round(np.random.uniform(-1.0 * x_cor_max_min, x_cor_max_min), 3),
-            "YCOR": round(ycor, 5),  # np.round(np.random.uniform(-1.0 * y_cor_max_min, y_cor_max_min), 3),
+            "isProvider": "0.0",
+            "education": str(round(education, 5)),
+            "economic": str(round(economic, 5)),
+            "WHO": str(float(i)),  # str(i),
+            "XCOR": str(round(xcor, 5)),  # np.round(np.random.uniform(-1.0 * x_cor_max_min, x_cor_max_min), 3),
+            "YCOR": str(round(ycor, 5)),  # np.round(np.random.uniform(-1.0 * y_cor_max_min, y_cor_max_min), 3),
         }
 
     edges = list(itertools.permutations(range(n), 2))
@@ -151,13 +131,11 @@ def using_permutation(n, target_k, c, d, x_cor_max_min, y_cor_max_min, links_wei
 
         if n1 == n2:
             continue
-        # education_diff = np.absolute(G.node[n1]["education"] - G.node[n2]["education"])
-        # economic_diff = np.absolute(G.node[n1]["economic"] - G.node[n2]["economic"])
 
-        education1 = G.node[n1]["education"]
-        education2 = G.node[n2]["education"]
-        economic1 = G.node[n1]["economic"]
-        economic2 = G.node[n2]["economic"]
+        education1 = float(G.node[n1]["education"])
+        education2 = float(G.node[n2]["education"])
+        economic1 = float(G.node[n1]["economic"])
+        economic2 = float(G.node[n2]["economic"])
 
         # education_uniform = np.random.uniform(0, education_diff)
         # economic_uniform = np.random.uniform(0, economic_diff)
@@ -181,26 +159,11 @@ def using_permutation(n, target_k, c, d, x_cor_max_min, y_cor_max_min, links_wei
                 weight = 1.0
 
             G.add_edge(n2, n1, {
-                "weight": weight,
+                "weight": str(weight),
                 "label": str(weight),
-                "color": 55  # green
+                "color": "55"  # green
             })
 
-    return G
-
-
-def custom_graph():
-    G = nx.DiGraph()
-    G.add_node(0, {"education": 0, "economic": 0, "WHO": 0, "XCOR": 3, "YCOR": 3})
-    G.add_node(1, {"education": 0, "economic": 0, "WHO": 1, "XCOR": -3, "YCOR": 3})
-    G.add_node(2, {"education": 0, "economic": 0, "WHO": 2, "XCOR": -3, "YCOR": -3})
-    G.add_node(3, {"education": 0, "economic": 0, "WHO": 3, "XCOR": 3, "YCOR": -3})
-
-    G.add_edge(0, 1, weight=0.1, label=0.1)
-    G.add_edge(0, 2, weight=0.1, label=0.1)
-    G.add_edge(1, 3, weight=0.1, label=0.1)
-    G.add_edge(2, 3, weight=0.1, label=0.1)
-    G.add_edge(3, 0, weight=0.1, label=0.1)
     return G
 
 
@@ -212,202 +175,12 @@ def line_prepender(filename, line):
     pass
 
 
-def add_news_provider_connect_to_driver_nodes_in_their_quadrants(G, driver_node, location_range):
-    new_node_id = G.number_of_nodes()
-    G.add_node(new_node_id, {
-        "education": -1, "economic": -1, "WHO": new_node_id, "color": "29",
-        "driver": 0, "isProvider": 1,
-        "XCOR": np.random.uniform(location_range, -1 * location_range),
-        "YCOR": np.random.uniform(location_range, location_range + 1)})
-    weight = round(np.random.uniform(0.4, 0.9), 3)
-    G.add_edge(new_node_id, driver_node, weight=weight, label=weight)
-    pass
-
-
-def add_four_news_provider_to_mds(G, mds, max_num_subscribers):
-    connected_driver_nodes = []
-
-    def add_provider_and_link_to_subscriber(xcor, ycor, max_num_subs):
-        new_node_id = G.number_of_nodes()
-        G.add_node(new_node_id, {
-            "education": -1, "economic": -1, "WHO": new_node_id, "color": "29",
-            "driver": 0, "isProvider": 1,
-            "XCOR": xcor,
-            "YCOR": ycor})
-
-        weight = 0.8
-
-        eligible_news_subscribers = []
-
-        for driver_node_2 in mds:
-            driver_node_xcor = G.node[driver_node_2]["XCOR"]
-            driver_node_ycor = G.node[driver_node_2]["YCOR"]
-
-            if xcor > 0 and ycor > 0 and driver_node_xcor > 0 and driver_node_ycor > 0:
-                eligible_news_subscribers.append(driver_node_2)
-            elif xcor < 0 and ycor > 0 and driver_node_xcor < 0 and driver_node_ycor > 0:
-                eligible_news_subscribers.append(driver_node_2)
-            elif xcor < 0 and ycor < 0 and driver_node_xcor < 0 and driver_node_ycor < 0:
-                eligible_news_subscribers.append(driver_node_2)
-            elif xcor > 0 and ycor < 0 and driver_node_xcor > 0 and driver_node_ycor < 0:
-                eligible_news_subscribers.append(driver_node_2)
-
-        if max_num_subs == 0:
-            max_num_subs = len(eligible_news_subscribers)
-
-        for i in range(0, max_num_subs):
-            if len(eligible_news_subscribers) > 0:
-                random.shuffle(eligible_news_subscribers)
-                node_to_subscriber = eligible_news_subscribers.pop()
-                connected_driver_nodes.append(node_to_subscriber)
-                G.add_edge(new_node_id, node_to_subscriber,
-                           weight=weight,
-                           label=weight,
-                           color="9.9"  # white
-                           )
-                pass
-        pass
-
-    pos = 9
-    add_provider_and_link_to_subscriber(pos, pos, max_num_subscribers)
-    add_provider_and_link_to_subscriber(-1 * pos, pos, max_num_subscribers)
-    add_provider_and_link_to_subscriber(-1 * pos, -1 * pos, max_num_subscribers)
-    add_provider_and_link_to_subscriber(pos, -1 * pos, max_num_subscribers)
-
-
-def add_four_news_provider_no_mds(G, max_num_subscribers, weight_max_uniform, inverse_distance_divide_by):
-    connected_driver_nodes = []
-    added_providers_nodes = []
-
-    def add_provider_and_link_to_subscriber(xcor, ycor, max_num_subs):
-
-        new_node_id = G.number_of_nodes()
-        added_providers_nodes.append(new_node_id)
-        G.add_node(new_node_id, {
-            "education": -1.0, "economic": -1.0, "WHO": new_node_id, "color": "29",
-            "driver": 0, "isProvider": 1.0,
-            "XCOR": xcor,
-            "YCOR": ycor})
-
-        # weight = np.absolute(np.round(np.random.normal(0, weight_std), 3))
-        weight = np.round(np.random.uniform(0.1, weight_max_uniform), 3)
-
-        nodes_shuffled = G.nodes()[:]
-        random.shuffle(nodes_shuffled)
-        for node in nodes_shuffled:
-            if node == new_node_id or node in added_providers_nodes:  # avoid self-link
-                continue
-
-            if max_num_subs > 0 and len(connected_driver_nodes) >= max_num_subs:
-                return
-
-            node_xcor = G.node[node]["XCOR"]
-            node_ycor = G.node[node]["YCOR"]
-
-            distance = np.sqrt(
-                np.power(xcor - node_xcor, 2) + np.power(ycor - node_ycor, 2)) / inverse_distance_divide_by
-
-            if 1 - distance <= 0.01:
-                bino = 0
-            else:
-                bino = np.random.binomial(1, 1.0 - distance)
-
-            if bino == 1:
-                connected_driver_nodes.append(node)
-                G.add_edge(new_node_id, node,
-                           weight=weight,
-                           label=weight,
-                           color="9.9"  # white
-                           )
-                pass
-        pass
-
-    pos = 9
-    add_provider_and_link_to_subscriber(pos, pos, max_num_subscribers)
-    add_provider_and_link_to_subscriber(-1.0 * pos, pos, max_num_subscribers)
-    add_provider_and_link_to_subscriber(-1.0 * pos, -1.0 * pos, max_num_subscribers)
-    add_provider_and_link_to_subscriber(pos, -1.0 * pos, max_num_subscribers)
-
-
-def add_fixed_providers_no_mds(G, max_num_subscribers, weight_max_uniform, inverse_distance_factor):
-    connected_driver_nodes = []
-    added_providers_nodes = []
-
-    def add_provider_and_link_to_subscriber(xcor, ycor, max_num_subs):
-
-        added_links = 0
-
-        new_node_id = G.number_of_nodes()
-        added_providers_nodes.append(new_node_id)
-        G.add_node(new_node_id, {
-            "education": -1.0, "economic": -1.0, "WHO": new_node_id, "color": "29",
-            "driver": 0, "isProvider": 1.0,
-            # "colourList": "",
-            "XCOR": xcor,
-            "YCOR": ycor})
-
-        # weight = np.absolute(np.round(np.random.normal(0, weight_std), 3))
-        weight = np.round(np.random.uniform(0.1, weight_max_uniform), 3)
-
-        nodes_shuffled = G.nodes()[:]
-        random.shuffle(nodes_shuffled)
-        for node in nodes_shuffled:
-            if node == new_node_id or node in added_providers_nodes:  # avoid self-link
-                continue
-
-            if node == new_node_id:  # avoid self-link
-                continue
-            # if max_num_subs > 0 and len(connected_driver_nodes) >= max_num_subs:
-            #     return
-            if max_num_subs > 0 and added_links >= max_num_subs:
-                return
-
-            node_xcor = G.node[node]["XCOR"]
-            node_ycor = G.node[node]["YCOR"]
-
-            # ;;;;;;;;;;;;;;; no need for randomness the nodes are already shuffled ;;;;;;
-            # distance = np.sqrt(
-            #     np.power(xcor - node_xcor, 2) + np.power(ycor - node_ycor, 2)) \
-            #            / inverse_distance_divide_by
-            #
-            # if 1 - distance <= 0.01:
-            #     bino = 0
-            # else:
-            #     bino = np.random.binomial(1, 1.0 - distance)
-
-            distance = np.sqrt(np.power(xcor - node_xcor, 2) + np.power(ycor - node_ycor, 2))
-
-            # if bino == 1:
-            if distance <= inverse_distance_factor:
-                connected_driver_nodes.append(node)
-                G.add_edge(new_node_id, node,
-                           weight=weight,
-                           label=weight,
-                           color="9.9"  # white
-                           )
-                added_links += 1
-                pass
-        pass
-
-    add_provider_and_link_to_subscriber(4.2, 9.8, max_num_subscribers)  # cnn
-    add_provider_and_link_to_subscriber(9.7, 9.5, max_num_subscribers)  # cnn
-
-    add_provider_and_link_to_subscriber(-9.8, 9.7, max_num_subscribers)  # bbc
-    add_provider_and_link_to_subscriber(-8.8, 3.6, max_num_subscribers)
-
-    add_provider_and_link_to_subscriber(-9.61, -9.92, max_num_subscribers)  # fox
-    add_provider_and_link_to_subscriber(-6.532, -8.8, max_num_subscribers)
-
-    add_provider_and_link_to_subscriber(9.8, -8.8, max_num_subscribers)
-    add_provider_and_link_to_subscriber(6.6, -9.5, max_num_subscribers)
-
-
 def stats(G):
     result = ""
     check_cutoff = 2.5
     edu = []
     for node in G.nodes():
-        edu.append(G.node[node]["education"])
+        edu.append(float(G.node[node]["education"]))
         # if G.node[node]["education"] > 2:
         #     econ.add(node)
         #     pass
@@ -417,7 +190,7 @@ def stats(G):
     ppl_edu = []
 
     for node in G.nodes():
-        ppl_edu.append(G.node[node]["education"])
+        ppl_edu.append(float(G.node[node]["education"]))
         pass
 
     count_nodes_with_no_link = len([val for val in G.degree().values() if val == 0])
@@ -429,11 +202,11 @@ def stats(G):
     edu_diffs = []
     econ_diffs = []
     for edge in G.edges():
-        weights.append(G.edge[edge[0]][edge[1]]["weight"])
-        edu_diffs.append(np.absolute(G.node[edge[0]]["education"] - G.node[edge[1]]["education"]))
-        econ_diffs.append(np.absolute(G.node[edge[0]]["economic"] - G.node[edge[1]]["economic"]))
-        if G.node[edge[0]]["education"] > check_cutoff and G.node[edge[1]]["education"] > check_cutoff:
-            edu_condition.append(np.absolute(G.node[edge[0]]["education"] - G.node[edge[1]]["education"]))
+        weights.append(float(G.edge[edge[0]][edge[1]]["weight"]))
+        edu_diffs.append(np.absolute(float(G.node[edge[0]]["education"]) - float(G.node[edge[1]]["education"])))
+        econ_diffs.append(np.absolute(float(G.node[edge[0]]["economic"]) - float(G.node[edge[1]]["economic"])))
+        if float(G.node[edge[0]]["education"]) > check_cutoff and float(G.node[edge[1]]["education"]) > check_cutoff:
+            edu_condition.append(np.absolute(float(G.node[edge[0]]["education"]) - float(G.node[edge[1]]["education"])))
             pass
 
     result += "$avg edu = {} $ num-edge-with-both-nodes-edu > {} = {} $avg-edu-diff = {} $avg-econ-diff = {} $<k> = {}".format(
@@ -448,29 +221,6 @@ def stats(G):
     )
 
     return result
-
-
-def homophily_matrix(G, lbl, save_p):
-    nums = [[0 for x in range(30)] for y in range(30)]
-
-    for edge in G.edges():
-        from_edu = G.node[edge[0]][lbl]
-        to_edu = G.node[edge[1]][lbl]
-
-        i = int((math.floor((from_edu - 0.00000001) * 10) / 10) * 10)
-        j = int((math.floor((to_edu - 0.00000001) * 10) / 10) * 10)
-
-        nums[i][j] += 1
-
-        pass
-
-    df = DataFrame(nums)
-    df.rename(columns=lambda x: x * 0.1, inplace=True)
-    df.rename(dict(zip(df.index.tolist(), [round(x * 0.1, 1) for x in df.index.tolist()])), inplace=True)
-
-    df.to_csv(save_p)
-
-    pass
 
 
 def homophily_matrix_combined(G, save_p):
@@ -522,10 +272,10 @@ def homophily_matrix_combined(G, save_p):
 
     for edge in G.edges():
         i, j = assign_combined_group(
-            from_edu=G.node[edge[0]]["education"],
-            to_edu=G.node[edge[1]]["education"],
-            from_econ=G.node[edge[0]]["economic"],
-            to_econ=G.node[edge[1]]["economic"]
+            from_edu=float(G.node[edge[0]]["education"]),
+            to_edu=float(G.node[edge[1]]["education"]),
+            from_econ=float(G.node[edge[0]]["economic"]),
+            to_econ=float(G.node[edge[1]]["economic"])
         )
 
         nums[i][j] += 1
@@ -602,20 +352,6 @@ if __name__ == "__main__":
         pass
     # n target_k x_cor_max_min y_cor_max_min links_weight_std education_mean education_std economic_mean economic_std c d debug run_number
     # 100 5 6 6 0.09 1.5 0.55 1.5 0.55 0.5 1.0 1 10
-    # for driver_node in mds:
-    #     # add_news_provider(G, mds, location_range=-7)
-    #     G.node[driver_node]["driver"] = 1
-
-    # add_four_news_provider_no_mds(
-    #     G, max_num_subscribers=max_num_subscribers,
-    #     weight_max_uniform=subscription_weight_max_uniform,
-    #     inverse_distance_divide_by=subscribers_inverse_distance_factor)
-
-    # max_num_subscribers = 4
-    add_fixed_providers_no_mds(
-        G, max_num_subscribers=max_num_subscribers,
-        weight_max_uniform=subscription_weight_max_uniform,
-        inverse_distance_factor=subscribers_inverse_distance_factor)
 
     i = 0
     while True:
